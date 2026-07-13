@@ -1,0 +1,5 @@
+﻿-- Core business schema applied remotely via MCP apply_migration create_core_business_schema
+-- See remote history for full SQL. This file documents the applied migration name for the repo.
+-- Tables: company_settings, customers, projects, project_files, project_milestones,
+-- accounts, categories, invoices, invoice_line_items, transactions, activity_logs, notifications
+-- Plus RLS policies and storage policies for receipts, project-files, logos.

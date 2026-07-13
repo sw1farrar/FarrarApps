@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DeviceVerifyForm } from "@/components/auth/device-verify-form";
-import { AuthAmbientBackground } from "@/components/auth/auth-ambient-background";
 import {
   getOrCreateDeviceToken,
   isDeviceTrustedForUser,
@@ -27,8 +26,20 @@ export default async function DeviceVerifyPage() {
   await sendDeviceChallengeEmail();
 
   return (
-    <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-[oklch(0.12_0_0)] px-4 py-10 max-sm:min-h-dvh max-sm:overflow-y-auto max-sm:px-5 max-sm:py-[max(1.75rem,env(safe-area-inset-top))]">
-      <AuthAmbientBackground />
+    <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-background px-4 py-10">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_oklch(0.38_0_0)_0%,_transparent_58%)] opacity-50 dark:opacity-70"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+        }}
+      />
 
       <div className="relative z-10 w-full max-w-[22rem]">
         <DeviceVerifyForm email={user.email} />

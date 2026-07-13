@@ -56,13 +56,13 @@ export default async function PortalPage() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="flex h-12 items-center justify-between border-b border-border px-4">
-        <div className="flex items-center gap-2">
+      <header className="flex h-16 items-center justify-between border-b border-border px-4">
+        <div className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/farrar_apps_logo.png"
             alt="Farrar Apps"
-            className="h-7 w-auto object-contain"
+            className="h-11 w-auto max-w-[12rem] object-contain"
           />
           <span className="text-xs text-muted-foreground">Client Portal</span>
         </div>

@@ -128,3 +128,15 @@
     @apply font-sans;
   }
 }
+
+@keyframes auth-mesh-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}

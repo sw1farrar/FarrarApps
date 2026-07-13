@@ -24,6 +24,7 @@ type LoginValues = z.infer<typeof loginSchema>;
 export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
   const router = useRouter();
   const [submitting, setSubmitting] = React.useState(false);
+  const [signingUp, setSigningUp] = React.useState(false);
   const [rememberComputer, setRememberComputer] = React.useState(true);
 
   const passwordForm = useForm<LoginValues>({
@@ -61,9 +62,29 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
     setSubmitting(false);
   }
 
+  async function onSignUp(values: LoginValues) {
+    setSigningUp(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signUp({
+      email: values.email,
+      password: values.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) {
+      setSigningUp(false);
+      toast.error(error.message);
+      return;
+    }
+
+    await finishAuth();
+    setSigningUp(false);
+  }
+
   return (
-    <div className="w-full overflow-hidden bg-transparent shadow-none">
-      <div className="px-0 pt-0 pb-3 max-sm:pb-4">
+    <div className="w-full overflow-hidden rounded-lg border border-border/60 bg-card/70 shadow-none backdrop-blur-sm">
+      <div className="border-b border-border/50 px-4 pt-4 pb-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/farrar_apps_logo.png?v=3"
@@ -73,10 +94,10 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
       </div>
 
       <form
-        className="space-y-2.5 px-0 pb-0 pt-0 max-sm:space-y-3.5"
+        className="space-y-2.5 p-4"
         onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}
       >
-        <div className="space-y-1 max-sm:space-y-1.5">
+        <div className="space-y-1">
           <Label htmlFor="email" className="text-xs">
             Email
           </Label>
@@ -84,8 +105,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
             id="email"
             type="email"
             autoComplete="email"
-            enterKeyHint="next"
-            className="h-8 text-sm max-sm:h-11 max-sm:text-base"
+            className="h-8 text-sm"
             {...passwordForm.register("email")}
           />
           {passwordForm.formState.errors.email && (
@@ -94,7 +114,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
             </p>
           )}
         </div>
-        <div className="space-y-1 max-sm:space-y-1.5">
+        <div className="space-y-1">
           <Label htmlFor="password" className="text-xs">
             Password
           </Label>
@@ -102,8 +122,7 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
             id="password"
             type="password"
             autoComplete="current-password"
-            enterKeyHint="go"
-            className="h-8 text-sm max-sm:h-11 max-sm:text-base"
+            className="h-8 text-sm"
             {...passwordForm.register("password")}
           />
           {passwordForm.formState.errors.password && (
@@ -113,27 +132,42 @@ export function LoginForm({ defaultEmail = "" }: { defaultEmail?: string }) {
           )}
         </div>
 
-        <label className="flex cursor-pointer items-center gap-2 pt-0.5 text-xs max-sm:min-h-11 max-sm:gap-2.5 max-sm:py-1">
+        <label className="flex cursor-pointer items-start gap-2 pt-0.5 text-xs">
           <Checkbox
             checked={rememberComputer}
             onCheckedChange={(value) => setRememberComputer(value === true)}
-            className="size-3.5 max-sm:size-4"
+            className="mt-0.5 size-3.5"
           />
-          <span className="font-medium leading-none text-foreground/90">
-            <span className="max-sm:hidden">Remember this computer</span>
-            <span className="hidden max-sm:inline">Remember this device</span>
+          <span className="leading-snug text-muted-foreground">
+            <span className="font-medium text-foreground/90">
+              Remember this computer
+            </span>
+            <span className="mt-0.5 block text-[11px] text-muted-foreground/80">
+              Uncheck on shared or public devices.
+            </span>
           </span>
         </label>
 
-        <div className="pt-1 max-sm:pt-2">
+        <div className="flex flex-col gap-1.5 pt-1">
           <Button
             type="submit"
             size="sm"
-            className="h-8 w-full max-sm:h-11 max-sm:text-sm"
-            disabled={submitting}
+            className="h-8 w-full"
+            disabled={submitting || signingUp}
           >
             {submitting && <Loader2 className="size-3.5 animate-spin" />}
             Sign in
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-full text-muted-foreground"
+            disabled={submitting || signingUp}
+            onClick={passwordForm.handleSubmit(onSignUp)}
+          >
+            {signingUp && <Loader2 className="size-3.5 animate-spin" />}
+            Create account
           </Button>
         </div>
       </form>

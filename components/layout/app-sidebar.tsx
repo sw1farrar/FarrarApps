@@ -70,21 +70,19 @@ export function AppSidebar({
       >
         <div
           className={cn(
-            "flex h-12 items-center gap-2 px-3",
-            collapsed && "justify-center px-2"
+            "flex shrink-0 items-center",
+            collapsed ? "h-14 justify-center px-2" : "w-full px-3 py-3"
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/farrar_apps_logo.png"
+            src="/farrar_apps_logo.png?v=3"
             alt="Farrar Apps"
-            className={cn("h-7 w-auto object-contain", collapsed && "h-6")}
+            className={cn(
+              "bg-transparent object-contain object-center",
+              collapsed ? "h-8 w-auto" : "h-auto w-full"
+            )}
           />
-          {!collapsed && (
-            <span className="truncate text-xs font-medium tracking-wide text-muted-foreground">
-              Workspace
-            </span>
-          )}
         </div>
 
         <Separator />

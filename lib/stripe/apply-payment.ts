@@ -416,7 +416,8 @@ async function applyViaPg(
 
     await client.query("commit");
 
-    void postApplySideEffects({
+    // Await on Vercel — fire-and-forget is killed when the function returns
+    await postApplySideEffects({
       invoiceId: invoice.id,
       invoiceNumber: invoice.invoice_number,
       invoiceAmount,
@@ -610,7 +611,8 @@ async function applyViaSupabase(
     console.error("stripe_invoice_payments upsert", logError.message);
   }
 
-  void postApplySideEffects({
+  // Await on Vercel — fire-and-forget is killed when the function returns
+  await postApplySideEffects({
     invoiceId: invoice.id,
     invoiceNumber: invoice.invoice_number,
     invoiceAmount,
@@ -629,24 +631,13 @@ export async function applyStripeInvoicePayment(
   | { ok: false; error: string }
 > {
   const viaPg = await applyViaPg(input);
-  if (viaPg) {
-    // Connectivity-style failures: try Supabase if available
-    if (
-      !viaPg.ok &&
-      /connect|ECONN|timeout|password|SSL|ENOTFOUND/i.test(viaPg.error)
-    ) {
-      try {
-        return await applyViaSupabase(input);
-      } catch {
-        return viaPg;
-      }
-    }
-    return viaPg;
-  }
+  if (viaPg?.ok) return viaPg;
 
+  // Prefer Supabase service-role path when PG missing or failed
   try {
     return await applyViaSupabase(input);
   } catch (e) {
+    if (viaPg && !viaPg.ok) return viaPg;
     return {
       ok: false,
       error:

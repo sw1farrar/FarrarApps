@@ -4,6 +4,8 @@ import { getStripe } from "@/lib/stripe/server";
 import { applyStripeInvoicePayment } from "@/lib/stripe/apply-payment";
 
 export const runtime = "nodejs";
+/** Allow payment apply + receipt/staff emails to finish on Vercel */
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;

@@ -2,8 +2,13 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import type { Customer } from "@/lib/types/database";
+import {
+  getPortalAccessStatuses,
+  type PortalAccessStatus,
+} from "@/lib/data/portal-status";
 import { CustomerFormDialog } from "@/components/customers/customer-form-dialog";
-import { Badge } from "@/components/ui/badge";
+import { PortalStatusBadge } from "@/components/customers/portal-status-badge";
+import { ListFilters } from "@/components/filters/list-filters";
 import {
   Table,
   TableBody,
@@ -13,26 +18,58 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export default async function CustomersPage() {
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string }>;
+}) {
+  const params = await searchParams;
+  const q = params.q?.trim() ?? "";
+  const statusFilter = params.status?.trim() ?? "";
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("customers")
-    .select("*")
+    .select("id, name, company, email, portal_user_id, updated_at")
     .order("name", { ascending: true });
 
-  const customers = (data ?? []) as Customer[];
+  if (q) {
+    const pattern = `%${q.replace(/[%_,]/g, "")}%`;
+    query = query.or(
+      `name.ilike.${pattern},company.ilike.${pattern},email.ilike.${pattern},city.ilike.${pattern},state.ilike.${pattern},zip.ilike.${pattern},address.ilike.${pattern}`
+    );
+  }
+
+  const { data } = await query;
+  let customers = (data ?? []) as Customer[];
+
+  const statusMap = await getPortalAccessStatuses(
+    customers.map((c) => ({ id: c.id, portal_user_id: c.portal_user_id }))
+  );
+
+  if (statusFilter === "linked" || statusFilter === "pending" || statusFilter === "unlinked") {
+    const want: PortalAccessStatus =
+      statusFilter === "linked"
+        ? "active"
+        : statusFilter === "pending"
+          ? "pending"
+          : "none";
+    customers = customers.filter((c) => statusMap[c.id] === want);
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">Customers</h1>
-          <p className="text-sm text-muted-foreground">
-            Contacts, notes, and linked work.
-          </p>
-        </div>
+      <div className="flex items-center justify-end gap-3">
         <CustomerFormDialog />
       </div>
+
+      <ListFilters
+        placeholder="Search customers"
+        statusOptions={[
+          { value: "linked", label: "Portal active" },
+          { value: "pending", label: "Invite pending" },
+          { value: "unlinked", label: "No portal" },
+        ]}
+      />
 
       {customers.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border px-4 py-16 text-center">
@@ -74,11 +111,9 @@ export default async function CustomersPage() {
                     {customer.email || "—"}
                   </TableCell>
                   <TableCell>
-                    {customer.portal_user_id ? (
-                      <Badge variant="secondary">Linked</Badge>
-                    ) : (
-                      <Badge variant="outline">Not invited</Badge>
-                    )}
+                    <PortalStatusBadge
+                      status={statusMap[customer.id] ?? "none"}
+                    />
                   </TableCell>
                   <TableCell className="text-right text-muted-foreground">
                     {formatDate(customer.updated_at)}

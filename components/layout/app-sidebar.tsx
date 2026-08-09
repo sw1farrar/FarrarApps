@@ -1,14 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
   FolderKanban,
-  FileText,
-  ArrowLeftRight,
-  BarChart3,
+  Wallet,
   Settings,
   PanelLeftClose,
   PanelLeft,
@@ -23,39 +21,40 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { NavLink } from "@/components/layout/nav-link";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types/database";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, ready: true },
-  { href: "/customers", label: "Customers", icon: Users, ready: true },
-  { href: "/projects", label: "Projects", icon: FolderKanban, ready: true },
-  { href: "/invoices", label: "Invoices", icon: FileText, ready: true },
-  {
-    href: "/transactions",
-    label: "Transactions",
-    icon: ArrowLeftRight,
-    ready: true,
-  },
-  { href: "/reports", label: "Reports", icon: BarChart3, ready: true },
-  { href: "/settings", label: "Settings", icon: Settings, ready: true },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/customers", label: "Customers", icon: Users },
+  { href: "/finance", label: "Finance", icon: Wallet },
+  { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 export function AppSidebar({
   collapsed,
   onToggle,
   profile,
+  onNavigate,
+  className,
 }: {
   collapsed: boolean;
   onToggle: () => void;
-  profile: Profile;
+  profile: Profile | null;
+  onNavigate?: () => void;
+  className?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
 
   async function handleSignOut() {
+    const { clearProfileCache } = await import("@/lib/auth/profile-cache");
+    clearProfileCache();
     const supabase = createClient();
     await supabase.auth.signOut();
+    await fetch("/auth/signout", { method: "POST" }).catch(() => undefined);
     router.push("/login");
     router.refresh();
   }
@@ -64,14 +63,15 @@ export function AppSidebar({
     <TooltipProvider delay={0}>
       <aside
         className={cn(
-          "flex h-full flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-[width] duration-200",
-          collapsed ? "w-14" : "w-56"
+          "flex h-full flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-[width] duration-150",
+          collapsed ? "w-14" : "w-56",
+          className
         )}
       >
         <div
           className={cn(
             "flex shrink-0 items-center",
-            collapsed ? "h-14 justify-center px-2" : "w-full px-3 py-3"
+            collapsed ? "h-12 justify-center px-2" : "w-full px-3 py-3"
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -94,53 +94,43 @@ export function AppSidebar({
             const content = (
               <span
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                  "flex w-full items-center gap-2 border-l-2 px-2 py-1.5 text-sm transition-colors duration-150",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                  !item.ready && "opacity-50",
+                    ? "border-primary bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                    : "border-transparent text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
                   collapsed && "justify-center px-0"
                 )}
               >
                 <Icon className="size-4 shrink-0" />
                 {!collapsed && (
-                  <>
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {!item.ready && (
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Soon
-                      </span>
-                    )}
-                  </>
+                  <span className="flex-1 text-left">{item.label}</span>
                 )}
               </span>
             );
 
-            const linkOrSpan = item.ready ? (
-              <Link href={item.href} className="block">
+            const link = (
+              <NavLink
+                href={item.href}
+                active={active}
+                className="block"
+                onClick={onNavigate}
+              >
                 {content}
-              </Link>
-            ) : (
-              <div className="cursor-not-allowed">{content}</div>
+              </NavLink>
             );
 
             if (collapsed) {
               return (
                 <Tooltip key={item.href}>
-                  <TooltipTrigger
-                    render={<div className="block w-full" />}
-                  >
-                    {linkOrSpan}
+                  <TooltipTrigger render={<div className="block w-full" />}>
+                    {link}
                   </TooltipTrigger>
-                  <TooltipContent side="right">
-                    {item.label}
-                    {!item.ready ? " (soon)" : ""}
-                  </TooltipContent>
+                  <TooltipContent side="right">{item.label}</TooltipContent>
                 </Tooltip>
               );
             }
 
-            return <div key={item.href}>{linkOrSpan}</div>;
+            return <div key={item.href}>{link}</div>;
           })}
         </nav>
 
@@ -148,14 +138,16 @@ export function AppSidebar({
           {!collapsed && (
             <div className="px-2 py-1.5">
               <p className="truncate text-xs font-medium">
-                {profile.full_name || profile.email}
+                {profile?.full_name || profile?.email || "Loading…"}
               </p>
               <p className="truncate text-[11px] capitalize text-muted-foreground">
-                {profile.role}
+                {profile?.role || " "}
               </p>
             </div>
           )}
-          <div className={cn("flex gap-1", collapsed && "flex-col items-center")}>
+          <div
+            className={cn("flex gap-1", collapsed && "flex-col items-center")}
+          >
             <Button
               variant="ghost"
               size="icon"

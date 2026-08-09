@@ -7,7 +7,7 @@ import type {
   Invoice,
   InvoiceLineItem,
 } from "@/lib/types/database";
-import InvoicePdfClient from "@/app/(app)/invoices/[id]/pdf/pdf-client";
+import InvoicePdfClient from "@/components/invoices/invoice-pdf-client";
 
 export default async function SharedInvoicePdfPage({
   params,
@@ -29,13 +29,21 @@ export default async function SharedInvoicePdfPage({
   if (!invoice) notFound();
 
   if (profile.role === "client") {
-    const { data: customer } = await supabase
-      .from("customers")
+    const { data: member } = await supabase
+      .from("customer_members")
       .select("id")
-      .eq("portal_user_id", profile.id)
-      .eq("id", invoice.customer_id)
+      .eq("user_id", profile.id)
+      .eq("customer_id", invoice.customer_id)
       .maybeSingle();
-    if (!customer) redirect("/portal");
+    if (!member) {
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("portal_user_id", profile.id)
+        .eq("id", invoice.customer_id)
+        .maybeSingle();
+      if (!customer) redirect("/portal");
+    }
   }
 
   const [{ data: lines }, { data: customer }, { data: company }] =
@@ -53,12 +61,29 @@ export default async function SharedInvoicePdfPage({
       supabase.from("company_settings").select("*").limit(1).maybeSingle(),
     ]);
 
+  const typedCompany = (company as CompanySettings | null) ?? null;
+  const typedInvoice = invoice as Invoice;
+  const { loadInvoiceCardFee } = await import("@/lib/invoices/load-card-fee");
+  const cardFee = await loadInvoiceCardFee(
+    supabase,
+    id,
+    Number(typedInvoice.total),
+    typedInvoice.paid_at
+  );
+  const { data: logo } = typedCompany?.logo_path
+    ? await supabase.storage
+        .from("logos")
+        .createSignedUrl(typedCompany.logo_path, 60 * 10)
+    : { data: null };
+
   return (
     <InvoicePdfClient
-      invoice={invoice as Invoice}
+      invoice={typedInvoice}
       lines={(lines ?? []) as InvoiceLineItem[]}
       customer={(customer as Customer) ?? null}
-      company={(company as CompanySettings) ?? null}
+      company={typedCompany}
+      initialLogoSrc={logo?.signedUrl ?? undefined}
+      cardFee={cardFee}
     />
   );
 }

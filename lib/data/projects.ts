@@ -75,6 +75,30 @@ export async function updateProject(
   return { ok: true, id };
 }
 
+export async function deleteProject(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: project } = await supabase
+    .from("projects")
+    .select("name, customer_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { error } = await supabase.from("projects").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  await logActivity({
+    action: "deleted",
+    entity_type: "project",
+    entity_id: id,
+    meta: { name: project?.name ?? null },
+  });
+
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  if (project?.customer_id) revalidatePath(`/customers/${project.customer_id}`);
+  return { ok: true };
+}
+
 export async function addProjectMilestone(
   projectId: string,
   formData: FormData
@@ -110,6 +134,36 @@ export async function toggleMilestone(
   return { ok: true };
 }
 
+export async function deleteProjectMilestone(
+  milestoneId: string,
+  projectId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: milestone } = await supabase
+    .from("project_milestones")
+    .select("title")
+    .eq("id", milestoneId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from("project_milestones")
+    .delete()
+    .eq("id", milestoneId)
+    .eq("project_id", projectId);
+  if (error) return { ok: false, error: error.message };
+
+  await logActivity({
+    action: "deleted",
+    entity_type: "project_milestone",
+    entity_id: milestoneId,
+    meta: { project_id: projectId, title: milestone?.title ?? null },
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+  return { ok: true };
+}
+
 export async function addProjectFileMeta(input: {
   projectId: string;
   storagePath: string;
@@ -133,5 +187,62 @@ export async function addProjectFileMeta(input: {
 
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/projects/${input.projectId}`);
+  return { ok: true };
+}
+
+export async function getProjectFileSignedUrl(
+  storagePath: string
+): Promise<ActionResult & { url?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from("project-files")
+    .createSignedUrl(storagePath, 60 * 60);
+
+  if (error || !data?.signedUrl) {
+    return { ok: false, error: error?.message || "Could not create file link" };
+  }
+
+  return { ok: true, url: data.signedUrl };
+}
+
+export async function deleteProjectFile(
+  fileId: string,
+  projectId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: file, error: fileError } = await supabase
+    .from("project_files")
+    .select("storage_path, file_name")
+    .eq("id", fileId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  if (fileError || !file) {
+    return { ok: false, error: fileError?.message || "File not found" };
+  }
+
+  const { error: storageError } = await supabase.storage
+    .from("project-files")
+    .remove([file.storage_path]);
+
+  const { error } = await supabase
+    .from("project_files")
+    .delete()
+    .eq("id", fileId)
+    .eq("project_id", projectId);
+  if (error) return { ok: false, error: error.message };
+
+  await logActivity({
+    action: "deleted",
+    entity_type: "project_file",
+    entity_id: fileId,
+    meta: {
+      project_id: projectId,
+      file_name: file.file_name,
+      storage_remove_error: storageError?.message ?? null,
+    },
+  });
+
+  revalidatePath(`/projects/${projectId}`);
   return { ok: true };
 }

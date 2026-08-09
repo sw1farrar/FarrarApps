@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth/profile";
 import type {
   Customer,
   Invoice,
@@ -9,32 +10,38 @@ import type {
   ProjectMilestone,
   Transaction,
 } from "@/lib/types/database";
-import { formatCurrency, formatDate } from "@/lib/format";
-import { ProjectForm } from "@/components/projects/project-form";
+import { titleCase } from "@/lib/format";
+import { DeleteProjectButton } from "@/components/projects/delete-project-button";
+import { ProjectContextPanel } from "@/components/projects/project-context-panel";
+import { ProjectDetailWorkspace } from "@/components/projects/project-detail-workspace";
+import { ProjectMessaging } from "@/components/projects/project-messaging";
 import {
-  ProjectFilesPanel,
-  ProjectMilestonesPanel,
-} from "@/components/projects/project-panels";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  getThreadUnreadCounts,
+  listProjectThreads,
+} from "@/lib/data/messaging";
+import { Badge } from "@/components/ui/badge";
 
 export default async function ProjectDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ thread?: string }>;
 }) {
   const { id } = await params;
+  const { thread: threadParam } = await searchParams;
   const supabase = await createClient();
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("*, customers(id, name, email)")
-    .eq("id", id)
-    .single();
+  const [profile, { data: project }] = await Promise.all([
+    getCurrentProfile(),
+    supabase
+      .from("projects")
+      .select(
+        "id, customer_id, name, scope, status, created_by, created_at, updated_at, customers(id, name)"
+      )
+      .eq("id", id)
+      .single(),
+  ]);
 
   if (!project) notFound();
 
@@ -44,119 +51,105 @@ export default async function ProjectDetailPage({
     { data: milestones },
     { data: invoices },
     { data: transactions },
+    threads,
   ] = await Promise.all([
-    supabase.from("customers").select("*").order("name"),
+    supabase
+      .from("customers")
+      .select("id, name, company, email")
+      .order("name"),
     supabase
       .from("project_files")
-      .select("*")
+      .select("id, storage_path, file_name")
       .eq("project_id", id)
       .order("created_at", { ascending: false }),
     supabase
       .from("project_milestones")
-      .select("*")
+      .select("id, title, due_date, completed_at")
       .eq("project_id", id)
       .order("sort_order"),
     supabase
       .from("invoices")
-      .select("*")
+      .select("id, invoice_number, total, status, due_date")
       .eq("project_id", id)
       .order("issue_date", { ascending: false }),
     supabase
       .from("transactions")
-      .select("*")
+      .select("id, description, type, amount, date")
       .eq("project_id", id)
       .order("date", { ascending: false }),
+    listProjectThreads(id),
   ]);
 
-  const typed = project as Project;
+  const threadUnread = await getThreadUnreadCounts(threads.map((t) => t.id));
+  const threadsWithUnread = threads.map((t) => ({
+    ...t,
+    unread: threadUnread[t.id] || 0,
+  }));
+
+  const typed = project as unknown as Project;
+
+  const context = (
+    <ProjectContextPanel
+      project={typed}
+      customers={(customers ?? []) as Customer[]}
+      files={(files ?? []) as ProjectFile[]}
+      milestones={(milestones ?? []) as ProjectMilestone[]}
+      invoices={(invoices ?? []) as Invoice[]}
+      transactions={(transactions ?? []) as Transaction[]}
+      compact
+    />
+  );
 
   return (
-    <div className="space-y-4">
-      <div>
-        <p className="text-xs text-muted-foreground">
-          <Link href="/projects" className="hover:underline">
+    <div
+      className={
+        // Fill the main area under the app header; no page-level scroll
+        "-mx-3 -mt-3 -mb-3 flex h-[calc(100dvh-3rem)] flex-col overflow-hidden sm:-mx-4 sm:-mt-4 sm:-mb-4 sm:h-[calc(100dvh-3.5rem)]"
+      }
+    >
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2 sm:px-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <Link
+            href="/projects"
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
             Projects
-          </Link>{" "}
-          / {typed.name}
-        </p>
-        <h1 className="text-lg font-semibold tracking-tight">{typed.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {typed.customers?.name} · updated {formatDate(typed.updated_at)}
-        </p>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card className="shadow-none">
-          <CardHeader className="p-3 pb-2">
-            <CardTitle className="text-sm">Details</CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <ProjectForm
-              customers={(customers ?? []) as Customer[]}
-              project={typed}
-            />
-          </CardContent>
-        </Card>
-
-        <div className="space-y-3">
-          <Card className="shadow-none">
-            <CardContent className="p-3">
-              <ProjectFilesPanel
-                projectId={id}
-                files={(files ?? []) as ProjectFile[]}
-              />
-            </CardContent>
-          </Card>
-          <Card className="shadow-none">
-            <CardContent className="p-3">
-              <ProjectMilestonesPanel
-                projectId={id}
-                milestones={(milestones ?? []) as ProjectMilestone[]}
-              />
-            </CardContent>
-          </Card>
-          <Card className="shadow-none">
-            <CardHeader className="p-3 pb-2">
-              <CardTitle className="text-sm">Linked invoices</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1 p-3 pt-0">
-              {(invoices as Invoice[] | null)?.length ? (
-                (invoices as Invoice[]).map((invoice) => (
-                  <Link
-                    key={invoice.id}
-                    href={`/invoices/${invoice.id}`}
-                    className="flex justify-between rounded-md border border-border px-2 py-1.5 text-sm hover:bg-muted/40"
-                  >
-                    <span>{invoice.invoice_number}</span>
-                    <span>{formatCurrency(invoice.total)}</span>
-                  </Link>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">None yet</p>
-              )}
-            </CardContent>
-          </Card>
-          <Card className="shadow-none">
-            <CardHeader className="p-3 pb-2">
-              <CardTitle className="text-sm">Linked transactions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1 p-3 pt-0">
-              {(transactions as Transaction[] | null)?.length ? (
-                (transactions as Transaction[]).map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex justify-between rounded-md border border-border px-2 py-1.5 text-sm"
-                  >
-                    <span>{tx.description || tx.type}</span>
-                    <span>{formatCurrency(tx.amount)}</span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">None yet</p>
-              )}
-            </CardContent>
-          </Card>
+          </Link>
+          <span className="text-xs text-border">/</span>
+          <h1 className="truncate text-sm font-semibold tracking-tight sm:text-base">
+            {typed.name}
+          </h1>
+          <Badge variant="secondary" className="text-[10px]">
+            {titleCase(typed.status)}
+          </Badge>
+          {typed.customers?.name ? (
+            <span className="truncate text-xs text-muted-foreground">
+              · {typed.customers.name}
+            </span>
+          ) : null}
         </div>
+        <DeleteProjectButton projectId={id} />
+      </header>
+
+      <div className="flex min-h-0 flex-1 flex-col p-2 sm:p-3">
+        <ProjectDetailWorkspace
+          contextTitle={typed.name}
+          messaging={
+            profile ? (
+              <ProjectMessaging
+                projectId={id}
+                initialThreads={threadsWithUnread}
+                currentUserId={profile.id}
+                initialThreadId={threadParam}
+                className="h-full min-h-0"
+                canModerate={
+                  profile.role === "owner" || profile.role === "staff"
+                }
+              />
+            ) : null
+          }
+          context={context}
+        />
       </div>
     </div>
   );

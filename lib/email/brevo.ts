@@ -1,9 +1,15 @@
+type EmailAttachment = {
+  name: string;
+  content: string;
+};
+
 type SendTransactionalEmailInput = {
   toEmail: string;
   toName?: string | null;
   subject: string;
   htmlContent: string;
   textContent?: string;
+  attachments?: EmailAttachment[];
 };
 
 export async function sendBrevoEmail(
@@ -38,6 +44,7 @@ export async function sendBrevoEmail(
       subject: input.subject,
       htmlContent: input.htmlContent,
       textContent: input.textContent,
+      attachment: input.attachments,
     }),
   });
 

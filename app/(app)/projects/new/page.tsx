@@ -12,7 +12,7 @@ export default async function NewProjectPage({
   const supabase = await createClient();
   const { data } = await supabase
     .from("customers")
-    .select("*")
+    .select("id, name, company, email")
     .order("name", { ascending: true });
 
   return (

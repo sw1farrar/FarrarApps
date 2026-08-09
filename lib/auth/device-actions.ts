@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendBrevoEmail } from "@/lib/email/brevo";
 import { buildDeviceVerifyEmail } from "@/lib/email/device-verify-template";
@@ -20,6 +21,18 @@ type ActionResult =
   | { status: "trusted" }
   | { status: "needs_verification" }
   | { status: "error"; error: string };
+
+type DeviceActionResult = { ok: true } | { ok: false; error: string };
+
+export type TrustedDevice = {
+  id: string;
+  user_id: string;
+  device_token: string;
+  user_agent: string | null;
+  last_used_at: string;
+  created_at: string;
+  is_current: boolean;
+};
 
 function cookieSecure() {
   return process.env.NODE_ENV === "production";
@@ -62,6 +75,93 @@ export async function isDeviceTrustedForUser(
   return Boolean(data?.id);
 }
 
+export async function listTrustedDevices(): Promise<TrustedDevice[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const currentDeviceToken = (await cookies()).get(DEVICE_TOKEN_COOKIE)?.value ?? null;
+  const { data, error } = await supabase
+    .from("trusted_devices")
+    .select("id, device_token, user_agent, last_used_at")
+    .eq("user_id", user.id)
+    .order("last_used_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as Omit<TrustedDevice, "is_current">[]).map((device) => ({
+    ...device,
+    is_current: device.device_token === currentDeviceToken,
+  }));
+}
+
+export async function revokeTrustedDevice(
+  id: string
+): Promise<DeviceActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const jar = await cookies();
+  const currentDeviceToken = jar.get(DEVICE_TOKEN_COOKIE)?.value;
+  const { data: device } = await supabase
+    .from("trusted_devices")
+    .select("device_token")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from("trusted_devices")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  if (device?.device_token === currentDeviceToken) {
+    jar.delete(DEVICE_SESSION_OK_COOKIE);
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/settings/security");
+  return { ok: true };
+}
+
+export async function revokeOtherTrustedDevices(): Promise<DeviceActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const currentDeviceToken = (await cookies()).get(DEVICE_TOKEN_COOKIE)?.value;
+  if (!currentDeviceToken) {
+    return { ok: false, error: "Current device is not available" };
+  }
+
+  const { error } = await supabase
+    .from("trusted_devices")
+    .delete()
+    .eq("user_id", user.id)
+    .neq("device_token", currentDeviceToken);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/settings/security");
+  return { ok: true };
+}
+
 export async function ensureDeviceAccess(input: {
   rememberComputer: boolean;
 }): Promise<ActionResult> {
@@ -98,6 +198,50 @@ export async function ensureDeviceAccess(input: {
   const sendResult = await sendDeviceChallengeEmail();
   if (sendResult.status === "error") return sendResult;
   return { status: "needs_verification" };
+}
+
+/** Trust this browser immediately (invite accept / first account setup). */
+export async function trustCurrentDevice(input: {
+  rememberComputer: boolean;
+}): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { status: "error", error: "Not signed in" };
+  }
+
+  const deviceToken = await getOrCreateDeviceToken();
+  const jar = await cookies();
+  const hdrs = await headers();
+  const userAgent = hdrs.get("user-agent")?.slice(0, 300) || null;
+
+  if (input.rememberComputer) {
+    const { error } = await supabase.from("trusted_devices").upsert(
+      {
+        user_id: user.id,
+        device_token: deviceToken,
+        user_agent: userAgent,
+        last_used_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,device_token" }
+    );
+    if (error) {
+      return { status: "error", error: error.message };
+    }
+  }
+
+  jar.set(DEVICE_SESSION_OK_COOKIE, sessionOkValue(user.id, deviceToken), {
+    httpOnly: true,
+    secure: cookieSecure(),
+    sameSite: "lax",
+    path: "/",
+    maxAge: input.rememberComputer ? DEVICE_TOKEN_MAX_AGE : undefined,
+  });
+
+  return { status: "trusted" };
 }
 
 export async function sendDeviceChallengeEmail(): Promise<ActionResult> {
@@ -226,7 +370,14 @@ export async function verifyDeviceChallenge(input: {
     if (error) {
       return { status: "error", error: error.message };
     }
-    jar.delete(DEVICE_SESSION_OK_COOKIE);
+    // Cache trust so middleware can skip a DB lookup on every navigation.
+    jar.set(DEVICE_SESSION_OK_COOKIE, sessionOkValue(user.id, deviceToken), {
+      httpOnly: true,
+      secure: cookieSecure(),
+      sameSite: "lax",
+      path: "/",
+      maxAge: DEVICE_TOKEN_MAX_AGE,
+    });
   } else {
     // Session-only trust — cleared when the browser closes
     jar.set(DEVICE_SESSION_OK_COOKIE, sessionOkValue(user.id, deviceToken), {
@@ -240,3 +391,4 @@ export async function verifyDeviceChallenge(input: {
   jar.delete("fa_remember_device");
   return { status: "trusted" };
 }
+

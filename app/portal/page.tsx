@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { PortalBriefForm } from "@/components/portal/portal-brief-form";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { FolderKanban, Receipt, FilePlus2, ArrowRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,155 +9,207 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { getCurrentProfile } from "@/lib/auth/profile";
+import { requirePortalContext } from "@/lib/data/portal-context";
 import { createClient } from "@/lib/supabase/server";
-import { linkPortalUserBySessionCustomer } from "@/lib/data/portal";
 import { formatCurrency, formatDate, titleCase } from "@/lib/format";
-import type { Invoice, Project } from "@/lib/types/database";
 import { cn } from "@/lib/utils";
+import type { Invoice, Project } from "@/lib/types/database";
 
-export default async function PortalPage() {
-  const profile = await getCurrentProfile();
-  if (!profile) redirect("/login");
-  if (profile.role !== "client") redirect("/dashboard");
-
-  await linkPortalUserBySessionCustomer();
-
+export default async function PortalHomePage() {
+  const { profile, customer } = await requirePortalContext();
   const supabase = await createClient();
-  const { data: customer } = await supabase
-    .from("customers")
-    .select("id, name")
-    .eq("portal_user_id", profile.id)
-    .maybeSingle();
 
-  const [{ data: invoices }, { data: projects }] = customer
+  const [
+    { data: invoices },
+    { data: projects },
+    { count: projectCount },
+    { count: invoiceCount },
+  ] = customer
     ? await Promise.all([
         supabase
           .from("invoices")
           .select("*")
           .eq("customer_id", customer.id)
-          .order("issue_date", { ascending: false }),
+          .order("issue_date", { ascending: false })
+          .limit(5),
         supabase
           .from("projects")
           .select("*")
           .eq("customer_id", customer.id)
-          .order("updated_at", { ascending: false }),
+          .order("updated_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("projects")
+          .select("*", { count: "exact", head: true })
+          .eq("customer_id", customer.id),
+        supabase
+          .from("invoices")
+          .select("*", { count: "exact", head: true })
+          .eq("customer_id", customer.id),
       ])
-    : [{ data: [] }, { data: [] }];
+    : [
+        { data: [] },
+        { data: [] },
+        { count: 0 },
+        { count: 0 },
+      ];
 
-  async function signOut() {
-    "use server";
-    const client = await createClient();
-    await client.auth.signOut();
-    redirect("/login");
-  }
+  const projectList = (projects as Project[] | null) ?? [];
+  const invoiceList = (invoices as Invoice[] | null) ?? [];
+  const totalProjects = projectCount ?? 0;
+  const totalInvoices = invoiceCount ?? 0;
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
-      <header className="flex h-16 items-center justify-between border-b border-border px-4">
-        <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/farrar_apps_logo.png"
-            alt="Farrar Apps"
-            className="h-11 w-auto max-w-[12rem] object-contain"
-          />
-          <span className="text-xs text-muted-foreground">Client Portal</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle userId={profile.id} />
-          <form action={signOut}>
-            <Button type="submit" variant="outline" size="sm">
-              Sign out
-            </Button>
-          </form>
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-4xl flex-1 space-y-4 px-4 py-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">
             Welcome, {profile.full_name || profile.email}
           </h1>
           <p className="text-sm text-muted-foreground">
             {customer
-              ? `Linked as ${customer.name}`
+              ? `Signed in for ${customer.name}${
+                  customer.company ? ` · ${customer.company}` : ""
+                }`
               : "Your account is not linked to a customer record yet. Ask Farrar Apps to connect you."}
           </p>
         </div>
+        {customer ? (
+          <Link
+            href="/portal/projects?new=1"
+            className={cn(buttonVariants({ size: "sm" }))}
+          >
+            <FilePlus2 className="size-4" />
+            Submit a brief
+          </Link>
+        ) : null}
+      </div>
 
-        {customer && <PortalBriefForm customerId={customer.id} />}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/portal/projects"
+          className="rounded-lg border border-border p-4 transition-colors hover:bg-muted/40"
+        >
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <FolderKanban className="size-4 text-muted-foreground" />
+            Projects
+            <ArrowRight className="ml-auto size-4 text-muted-foreground" />
+          </div>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">
+            {totalProjects}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Track status and submit new briefs
+          </p>
+        </Link>
+        <Link
+          href="/portal/billing"
+          className="rounded-lg border border-border p-4 transition-colors hover:bg-muted/40"
+        >
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Receipt className="size-4 text-muted-foreground" />
+            Billing
+            <ArrowRight className="ml-auto size-4 text-muted-foreground" />
+          </div>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">
+            {totalInvoices}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            View invoices and download PDFs
+          </p>
+        </Link>
+      </div>
 
-        <div className="grid gap-3 lg:grid-cols-2">
-          <Card className="shadow-none">
-            <CardHeader className="p-3 pb-2">
-              <CardTitle className="text-sm">Invoices</CardTitle>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card className="shadow-none">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-2">
+            <div>
+              <CardTitle className="text-sm">Recent projects</CardTitle>
               <CardDescription className="text-xs">
-                View and download PDFs
+                Latest work for your account
               </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 p-3 pt-0">
-              {(invoices as Invoice[] | null)?.length ? (
-                (invoices as Invoice[]).map((invoice) => (
-                  <div
-                    key={invoice.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">{invoice.invoice_number}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(invoice.issue_date)} ·{" "}
-                        {formatCurrency(invoice.total)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">
-                        {titleCase(invoice.status)}
-                      </Badge>
-                      <Link
-                        href={`/invoice-pdf/${invoice.id}`}
-                        className={cn(
-                          buttonVariants({ size: "sm", variant: "outline" })
-                        )}
-                      >
-                        PDF
-                      </Link>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No invoices yet.</p>
+            </div>
+            <Link
+              href="/portal/projects"
+              className={cn(
+                buttonVariants({ size: "sm", variant: "ghost" }),
+                "h-7 px-2 text-xs"
               )}
-            </CardContent>
-          </Card>
+            >
+              View all
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-2 p-3 pt-0">
+            {projectList.length ? (
+              projectList.map((project) => (
+                <Link
+                  key={project.id}
+                  href={`/portal/projects/${project.id}`}
+                  className="flex items-center justify-between rounded-md border border-border px-2 py-1.5 text-sm transition-colors hover:bg-muted/40"
+                >
+                  <span className="truncate font-medium">{project.name}</span>
+                  <Badge variant="secondary">{titleCase(project.status)}</Badge>
+                </Link>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No projects yet.{" "}
+                {customer ? (
+                  <Link
+                    href="/portal/projects?new=1"
+                    className="underline underline-offset-2"
+                  >
+                    Submit a brief
+                  </Link>
+                ) : null}
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-          <Card className="shadow-none">
-            <CardHeader className="p-3 pb-2">
-              <CardTitle className="text-sm">Projects</CardTitle>
+        <Card className="shadow-none">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-2">
+            <div>
+              <CardTitle className="text-sm">Recent invoices</CardTitle>
               <CardDescription className="text-xs">
-                Status of active work
+                Billing activity
               </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 p-3 pt-0">
-              {(projects as Project[] | null)?.length ? (
-                (projects as Project[]).map((project) => (
-                  <div
-                    key={project.id}
-                    className="flex items-center justify-between rounded-md border border-border px-2 py-1.5 text-sm"
-                  >
-                    <span className="font-medium">{project.name}</span>
-                    <Badge variant="secondary">
-                      {titleCase(project.status)}
-                    </Badge>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No projects yet.</p>
+            </div>
+            <Link
+              href="/portal/billing"
+              className={cn(
+                buttonVariants({ size: "sm", variant: "ghost" }),
+                "h-7 px-2 text-xs"
               )}
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+            >
+              View all
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-2 p-3 pt-0">
+            {invoiceList.length ? (
+              invoiceList.map((invoice) => (
+                <div
+                  key={invoice.id}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {invoice.invoice_number}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(invoice.issue_date)} ·{" "}
+                      {formatCurrency(invoice.total)}
+                    </p>
+                  </div>
+                  <Badge variant="secondary">{titleCase(invoice.status)}</Badge>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No invoices yet.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

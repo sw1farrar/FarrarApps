@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export async function syncOverdueNotifications() {
@@ -9,6 +8,13 @@ export async function syncOverdueNotifications() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profile?.role !== "owner" && profile?.role !== "staff") return;
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -26,12 +32,13 @@ export async function syncOverdueNotifications() {
         .eq("id", invoice.id);
     }
 
+    // Do not re-notify if user already has any notification for this invoice
+    // (including dismissed/read ones).
     const { data: existing } = await supabase
       .from("notifications")
       .select("id")
       .eq("user_id", user.id)
-      .eq("href", `/invoices/${invoice.id}`)
-      .is("read_at", null)
+      .eq("href", `/finance/invoices/${invoice.id}`)
       .limit(1);
 
     if (!existing?.length) {
@@ -39,12 +46,13 @@ export async function syncOverdueNotifications() {
         user_id: user.id,
         title: `Invoice ${invoice.invoice_number} is overdue`,
         body: `Due ${invoice.due_date}`,
-        href: `/invoices/${invoice.id}`,
+        href: `/finance/invoices/${invoice.id}`,
       });
     }
   }
 }
 
+/** Active (not dismissed) notifications for the bell. */
 export async function getNotifications() {
   const supabase = await createClient();
   const {
@@ -56,8 +64,9 @@ export async function getNotifications() {
     .from("notifications")
     .select("*")
     .eq("user_id", user.id)
+    .is("read_at", null)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(30);
 
   return data ?? [];
 }
@@ -68,20 +77,44 @@ export async function markNotificationRead(id: string) {
     .from("notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("id", id);
-  revalidatePath("/", "layout");
 }
 
-export async function markAllNotificationsRead() {
+/** Dismiss one notification (clears it from the bell). */
+export async function dismissNotification(id: string) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return { ok: false as const, error: "Sign in required" };
 
-  await supabase
+  const { error } = await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return { ok: false as const, error: error.message };
+  return { ok: true as const };
+}
+
+/** Clear every active notification for the current user. */
+export async function dismissAllNotifications() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const, error: "Sign in required" };
+
+  const { error } = await supabase
     .from("notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("user_id", user.id)
     .is("read_at", null);
-  revalidatePath("/", "layout");
+
+  if (error) return { ok: false as const, error: error.message };
+  return { ok: true as const };
+}
+
+export async function markAllNotificationsRead() {
+  return dismissAllNotifications();
 }

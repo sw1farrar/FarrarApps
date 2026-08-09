@@ -23,11 +23,13 @@ export function KeyboardShortcuts() {
           if (next.metaKey || next.ctrlKey || next.altKey) return;
           const map: Record<string, string> = {
             d: "/dashboard",
-            c: "/customers",
             p: "/projects",
-            i: "/invoices",
-            t: "/transactions",
-            r: "/reports",
+            c: "/customers",
+            f: "/finance",
+            i: "/finance/invoices",
+            t: "/finance/transactions",
+            r: "/finance/reports",
+            a: "/activity",
             s: "/settings",
           };
           const href = map[next.key.toLowerCase()];
@@ -46,8 +48,8 @@ export function KeyboardShortcuts() {
           const map: Record<string, string> = {
             c: "/customers",
             p: "/projects/new",
-            i: "/invoices/new",
-            t: "/transactions",
+            i: "/finance/invoices/new",
+            t: "/finance/transactions",
           };
           const href = map[next.key.toLowerCase()];
           if (href) {

@@ -26,6 +26,11 @@ export function DataExportCard() {
       "transactions",
       "company_settings",
       "activity_logs",
+      "notifications",
+      "saved_views",
+      "staff_invites",
+      "portal_invites",
+      "trusted_devices",
     ] as const;
 
     const payload: Record<string, unknown> = {

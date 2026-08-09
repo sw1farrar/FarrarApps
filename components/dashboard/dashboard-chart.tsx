@@ -36,21 +36,18 @@ export function DashboardChart({
           <Line
             type="monotone"
             dataKey="income"
-            stroke="currentColor"
-            className="text-foreground"
+            stroke="var(--chart-1)"
             strokeWidth={2}
             dot={false}
           />
           <Line
             type="monotone"
             dataKey="expense"
-            stroke="currentColor"
-            className="text-muted-foreground"
+            stroke="var(--chart-5)"
             strokeWidth={2}
             strokeDasharray="4 4"
             dot={false}
-          />
-        </LineChart>
+          />        </LineChart>
       </ResponsiveContainer>
     </div>
   );

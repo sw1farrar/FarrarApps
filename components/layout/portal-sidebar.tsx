@@ -13,6 +13,8 @@ import {
   LogOut,
   FilePlus2,
   Users,
+  UserRound,
+  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { NavLink } from "@/components/layout/nav-link";
 import { createClient } from "@/lib/supabase/client";
 import type { CustomerMemberRole, Profile } from "@/lib/types/database";
@@ -200,16 +209,56 @@ export function PortalSidebar({
         </nav>
 
         <div className="mt-auto space-y-1 border-t border-border p-2">
-          {!collapsed && (
-            <div className="px-2 py-1.5">
-              <p className="truncate text-xs font-medium">
-                {profile?.full_name || profile?.email || "Loading…"}
-              </p>
-              <p className="truncate text-[11px] text-muted-foreground">
-                Client
-              </p>
-            </div>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    collapsed && "justify-center px-0"
+                  )}
+                  aria-label="Account menu"
+                />
+              }
+            >
+              {collapsed ? (
+                <UserRound className="size-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">
+                      {profile?.full_name || profile?.email || "Loading…"}
+                    </p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      Client
+                    </p>
+                  </div>
+                  <ChevronUp className="size-3.5 shrink-0 text-muted-foreground" />
+                </>
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side={collapsed ? "right" : "top"}
+              align="start"
+              className="min-w-48"
+            >
+              <DropdownMenuItem
+                onClick={() => {
+                  onNavigate?.();
+                  router.push("/portal/settings");
+                }}
+              >
+                <UserRound className="size-4" />
+                Account settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
+                <LogOut className="size-4" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div
             className={cn("flex gap-1", collapsed && "flex-col items-center")}
           >
@@ -225,15 +274,6 @@ export function PortalSidebar({
               ) : (
                 <PanelLeftClose className="size-4" />
               )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              onClick={handleSignOut}
-              aria-label="Sign out"
-            >
-              <LogOut className="size-4" />
             </Button>
           </div>
         </div>

@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   getCachedProfile,
   loadProfileOnce,
+  subscribeProfileCache,
 } from "@/lib/auth/profile-cache";
 import type { Profile } from "@/lib/types/database";
 
@@ -84,6 +85,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  React.useEffect(() => {
+    return subscribeProfileCache((next) => {
+      if (next) setProfile(next);
+    });
   }, []);
 
   return (

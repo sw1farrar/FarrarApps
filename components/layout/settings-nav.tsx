@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { NavLink } from "@/components/layout/nav-link";
 
 const tabs: { href: string; label: string; exact?: boolean }[] = [
+  { href: "/settings/account", label: "Account" },
   { href: "/settings", label: "Company", exact: true },
   { href: "/settings/users", label: "Users" },
   { href: "/settings/security", label: "Security" },
@@ -19,7 +20,7 @@ export function SettingsNav() {
       className="relative flex items-center border-b border-border"
       aria-label="Settings sections"
     >
-      <div className="mx-auto grid min-w-0 w-full flex-1 grid-cols-2 gap-x-1 sm:grid-cols-4 sm:gap-x-2">
+      <div className="mx-auto grid min-w-0 w-full flex-1 grid-cols-2 gap-x-1 sm:grid-cols-3 md:grid-cols-5 sm:gap-x-2">
         {tabs.map((tab) => {
           const active = tab.exact
             ? pathname === tab.href

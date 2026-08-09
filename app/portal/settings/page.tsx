@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PortalProfileForm } from "@/components/portal/portal-profile-form";
+import { AccountSettingsPanels } from "@/components/settings/account-settings-panels";
 import {
   Card,
   CardContent,
@@ -19,30 +19,17 @@ export default async function PortalSettingsPage() {
       <div>
         <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">
-          Update your profile details for this portal account.
+          Manage your name, login email, and password for this portal account.
         </p>
       </div>
 
-      <Card className="shadow-none">
-        <CardHeader className="p-3 pb-2">
-          <CardTitle className="text-sm">Profile</CardTitle>
-          <CardDescription className="text-xs">
-            Name shown in the portal. Email is managed by Farrar Apps.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-3 pt-0">
-          <PortalProfileForm
-            fullName={profile.full_name || ""}
-            email={profile.email || ""}
-          />
-        </CardContent>
-      </Card>
+      <AccountSettingsPanels profile={profile} />
 
       <Card className="shadow-none">
         <CardHeader className="p-3 pb-2">
-          <CardTitle className="text-sm">Account</CardTitle>
+          <CardTitle className="text-sm">Linked customer</CardTitle>
           <CardDescription className="text-xs">
-            Linked customer information
+            Company and billing contact details (not your login email)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 p-3 pt-0 text-sm">

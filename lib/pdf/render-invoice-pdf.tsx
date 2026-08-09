@@ -1,3 +1,4 @@
+import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { InvoicePdfDocument } from "@/components/invoices/invoice-pdf-document";
 import type { InvoiceCardFeeDisplay } from "@/lib/invoices/card-fee-display";

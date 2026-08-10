@@ -32,7 +32,7 @@ export default async function EditFinanceInvoicePage({
       .single(),
     supabase
       .from("invoice_line_items")
-      .select("description, quantity, rate")
+      .select("description, quantity, rate, service_date")
       .eq("invoice_id", id)
       .order("sort_order"),
     supabase

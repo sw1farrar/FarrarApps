@@ -83,6 +83,9 @@ export default async function GuestPaySuccessPage({
         feeAmount = money2(sessionFee);
         chargeAmount = money2(sessionCharge || principal + sessionFee);
 
+        if (!invoice.customer_id) {
+          throw new Error("Invoice is missing a customer");
+        }
         await applyStripeInvoicePayment({
           invoiceId: invoice.id,
           customerId: invoice.customer_id,
@@ -209,7 +212,9 @@ export default async function GuestPaySuccessPage({
                     className="flex justify-between gap-3 text-xs"
                   >
                     <span className="min-w-0 truncate text-[#333]">
-                      {line.description}
+                      {line.service_date
+                        ? `${formatDate(line.service_date)} · ${line.description}`
+                        : line.description}
                     </span>
                     <span className="shrink-0 tabular-nums">
                       {formatCurrency(line.amount)}

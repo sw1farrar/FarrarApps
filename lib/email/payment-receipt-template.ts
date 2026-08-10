@@ -46,13 +46,16 @@ export function buildPaymentReceiptEmailHtml(input: {
     : `<div style="font-size:20px;font-weight:700;color:#1a1a1a;">${escapeHtml(companyName)}</div>`;
 
   const lineRows = lines
-    .map(
-      (line) => `
+    .map((line) => {
+      const dateBit = line.service_date
+        ? `<div style="font-size:11px;color:#888;margin-bottom:2px;">${escapeHtml(formatDate(line.service_date))}</div>`
+        : "";
+      return `
       <tr>
-        <td style="padding:8px 12px;border-bottom:1px solid #ecece8;font-size:13px;color:#333;">${escapeHtml(line.description)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #ecece8;font-size:13px;color:#333;">${dateBit}${escapeHtml(line.description)}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #ecece8;font-size:13px;color:#333;text-align:right;white-space:nowrap;">${formatCurrency(line.amount)}</td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
 
   const feeRow =

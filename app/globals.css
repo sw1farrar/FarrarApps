@@ -4,9 +4,42 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+  Motion system — subtle/professional shell chrome only.
+  Do not animate: full page routes, table rows, KPI count-ups, theme color tweens.
+*/
+:root {
+  --motion-instant: 100ms;
+  --motion-fast: 150ms;
+  --motion-base: 180ms;
+  --motion-ease-enter: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-ease-exit: ease-out;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 120ms;
+  animation-duration: var(--motion-instant);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-instant: 0ms;
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Keep progress spinners visible when reduced motion is on */
+  .animate-spin {
+    animation-duration: 0.8s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 @theme inline {
@@ -156,14 +189,42 @@
     background-color: var(--popover);
   }
 
-  /* Native date/time pickers follow color-scheme; keep field text on tokens. */
+  /*
+    Native date/time fields: Chromium often ignores inherited color-scheme on
+    the inner segments + calendar icon, which leaves black text/icon on dark
+    surfaces. Set scheme explicitly on the control (not inherit).
+  */
   input[type="date"],
   input[type="time"],
   input[type="datetime-local"],
   input[type="month"],
   input[type="week"] {
     color: var(--foreground);
-    color-scheme: inherit;
+    color-scheme: light;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator,
+  input[type="week"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.65;
+  }
+  .dark input[type="date"],
+  .dark input[type="time"],
+  .dark input[type="datetime-local"],
+  .dark input[type="month"],
+  .dark input[type="week"] {
+    color: var(--foreground);
+    /* Explicit dark scheme lightens mm/dd/yyyy segments + the calendar glyph */
+    color-scheme: dark;
+  }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="time"]::-webkit-calendar-picker-indicator,
+  .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  .dark input[type="month"]::-webkit-calendar-picker-indicator,
+  .dark input[type="week"]::-webkit-calendar-picker-indicator {
+    opacity: 0.85;
   }
 }
 

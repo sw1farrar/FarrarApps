@@ -6,6 +6,7 @@ import { calculateAccountBalance } from "@/lib/data/account-balances";
 import { getAccountsReceivableOverview } from "@/lib/data/balances";
 import { getCashBasisReport } from "@/lib/data/reports";
 import type { Account } from "@/lib/types/database";
+import { KpiTile } from "@/components/dashboard/kpi-tile";
 import {
   Card,
   CardContent,
@@ -76,22 +77,40 @@ export default async function FinanceOverviewPage() {
       0
     );
 
+  const profit = income - expenses;
   const kpis = [
-    { label: "MTD Profit", value: formatCurrency(income - expenses) },
+    {
+      label: "MTD Profit",
+      value: formatCurrency(profit),
+      hint: "This month",
+      tone:
+        profit > 0
+          ? ("positive" as const)
+          : profit < 0
+            ? ("warning" as const)
+            : ("default" as const),
+    },
     {
       label: "Open AR",
       value: formatCurrency(ar.totals.openTotal),
+      hint: `${ar.totals.openCount} open`,
       href: "/finance/ar",
     },
     {
       label: "Pending invoices",
-      value: `${(pendingInvoices ?? []).length} · ${formatCurrency(pendingTotal)}`,
+      value: formatCurrency(pendingTotal),
+      hint: `${(pendingInvoices ?? []).length} sent / overdue`,
       href: "/finance/invoices?status=sent",
     },
     {
       label: "Unreconciled",
       value: String(unreconciledCount ?? 0),
+      hint: "Transactions",
       href: "/finance/transactions?unreconciled=1",
+      tone:
+        (unreconciledCount ?? 0) > 0
+          ? ("warning" as const)
+          : ("default" as const),
     },
     {
       label: "Stripe balance",
@@ -127,22 +146,16 @@ export default async function FinanceOverviewPage() {
         </Link>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
         {kpis.map((kpi) => (
-          <Card key={kpi.label} className="shadow-none">
-            <CardHeader className="gap-1 p-3 pb-1">
-              <CardDescription className="text-xs">{kpi.label}</CardDescription>
-              <CardTitle className="text-xl tabular-nums">
-                {"href" in kpi && kpi.href ? (
-                  <Link href={kpi.href} className="hover:underline">
-                    {kpi.value}
-                  </Link>
-                ) : (
-                  kpi.value
-                )}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+          <KpiTile
+            key={kpi.label}
+            label={kpi.label}
+            value={kpi.value}
+            hint={"hint" in kpi ? kpi.hint : undefined}
+            href={"href" in kpi ? kpi.href : undefined}
+            tone={"tone" in kpi ? kpi.tone : "default"}
+          />
         ))}
       </div>
 

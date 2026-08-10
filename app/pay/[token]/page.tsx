@@ -114,7 +114,18 @@ export default async function GuestPayPage({
                       key={line.id}
                       className="border-b border-border last:border-0"
                     >
-                      <td className="px-3 py-2">{line.description}</td>
+                      <td className="px-3 py-2">
+                        {line.service_date ? (
+                          <div className="space-y-0.5">
+                            <p className="text-xs text-muted-foreground">
+                              {formatDate(line.service_date)}
+                            </p>
+                            <p>{line.description}</p>
+                          </div>
+                        ) : (
+                          line.description
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {formatCurrency(line.amount)}
                       </td>

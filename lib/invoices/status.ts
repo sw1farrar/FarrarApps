@@ -1,3 +1,4 @@
+import { calendarDaysPastDue } from "@/lib/format";
 import type { InvoiceStatus } from "@/lib/types/database";
 
 export type InvoiceDisplayStatus = "Draft" | "Sent" | "Past due" | "Paid";
@@ -8,12 +9,7 @@ export function invoiceDaysPastDue(
   status: InvoiceStatus
 ): number | null {
   if (status === "paid" || status === "draft") return null;
-  if (!dueDate) return null;
-  const due = new Date(`${String(dueDate).slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(due.getTime())) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+  return calendarDaysPastDue(dueDate);
 }
 
 export function displayInvoiceStatus(

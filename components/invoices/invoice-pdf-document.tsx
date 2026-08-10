@@ -8,12 +8,19 @@ import {
   Image,
 } from "@react-pdf/renderer";
 import type { InvoiceCardFeeDisplay } from "@/lib/invoices/card-fee-display";
+import { formatDate } from "@/lib/format";
 import type {
   CompanySettings,
   Customer,
   Invoice,
   InvoiceLineItem,
 } from "@/lib/types/database";
+
+function paidOnLabel(value: string | null | undefined) {
+  if (!value) return "";
+  // Timestamps: show local calendar day of the instant; pure YMD via formatDate
+  return formatDate(value);
+}
 
 const styles = StyleSheet.create({
   page: {
@@ -125,13 +132,14 @@ export function InvoicePdfDocument({
           ) : null}
           {customer?.email ? <Text>{customer.email}</Text> : null}
           <Text>
-            Issued {invoice.issue_date} · Due {invoice.due_date}
+            Issued {formatDate(invoice.issue_date)} · Due{" "}
+            {formatDate(invoice.due_date)}
           </Text>
           {isPaid ? (
             <Text style={styles.paidBadge}>
               PAID
               {cardFee?.paidAt || invoice.paid_at
-                ? ` · ${String(cardFee?.paidAt || invoice.paid_at).slice(0, 10)}`
+                ? ` · ${paidOnLabel(cardFee?.paidAt || invoice.paid_at)}`
                 : ""}
               {showFee ? " · includes card processing fee" : ""}
             </Text>
@@ -146,7 +154,14 @@ export function InvoicePdfDocument({
         </View>
         {lines.map((line) => (
           <View key={line.id} style={styles.row}>
-            <Text style={styles.colDesc}>{line.description}</Text>
+            <View style={styles.colDesc}>
+              {line.service_date ? (
+                <Text style={{ fontSize: 8, color: "#666", marginBottom: 2 }}>
+                  {formatDate(line.service_date)}
+                </Text>
+              ) : null}
+              <Text>{line.description}</Text>
+            </View>
             <Text style={styles.colQty}>{Number(line.quantity)}</Text>
             <Text style={styles.colRate}>{money(line.rate)}</Text>
             <Text style={styles.colAmt}>{money(line.amount)}</Text>

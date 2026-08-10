@@ -85,7 +85,18 @@ export function InvoicePaperPreview({
               <tbody>
                 {lines.map((line) => (
                   <tr key={line.id} className="border-b border-[#e5e5e5]">
-                    <td className="py-1.5 pr-2">{line.description}</td>
+                    <td className="py-1.5 pr-2">
+                      {line.service_date ? (
+                        <div>
+                          <div className="text-[9px] text-[#666]">
+                            {formatDate(line.service_date)}
+                          </div>
+                          <div>{line.description}</div>
+                        </div>
+                      ) : (
+                        line.description
+                      )}
+                    </td>
                     <td className="py-1.5 text-right tabular-nums">
                       {Number(line.quantity)}
                     </td>

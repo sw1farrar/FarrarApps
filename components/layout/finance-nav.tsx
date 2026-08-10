@@ -12,10 +12,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
-const mainTabs: { href: string; label: string; exact?: boolean }[] = [
-  { href: "/finance", label: "Overview", exact: true },
-  { href: "/finance/accounts", label: "Bank accounts" },
-  { href: "/finance/transactions", label: "Transactions" },
+const mainTabs: {
+  href: string;
+  label: string;
+  shortLabel?: string;
+  exact?: boolean;
+}[] = [
+  { href: "/finance", label: "Overview", shortLabel: "Home", exact: true },
+  { href: "/finance/accounts", label: "Bank accounts", shortLabel: "Banks" },
+  { href: "/finance/transactions", label: "Transactions", shortLabel: "Txns" },
   { href: "/finance/invoices", label: "Invoices" },
   { href: "/finance/ar", label: "AR" },
   { href: "/finance/reports", label: "Reports" },
@@ -53,13 +58,15 @@ export function FinanceNav() {
               active={active}
               exact={tab.exact}
               className={cn(
-                "inline-flex h-9 w-full items-center justify-center border-b-2 px-1 text-center text-sm font-medium transition-colors",
+                "inline-flex h-9 w-full items-center justify-center border-b-2 px-1 text-center text-sm font-medium transition-colors duration-[var(--motion-instant)]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
                 active
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
-              {tab.label}
+              <span className="hidden lg:inline">{tab.label}</span>
+              <span className="lg:hidden">{tab.shortLabel ?? tab.label}</span>
             </NavLink>
           );
         })}

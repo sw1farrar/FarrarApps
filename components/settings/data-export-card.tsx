@@ -2,6 +2,7 @@
 
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { toCalendarDateString } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -53,7 +54,7 @@ export function DataExportCard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `farrar-apps-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `farrar-apps-backup-${toCalendarDateString()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Backup downloaded");

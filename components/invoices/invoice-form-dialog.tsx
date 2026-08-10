@@ -86,11 +86,15 @@ export function InvoiceFormDialog({
               defaultCustomerId={defaultCustomerId}
               defaultProjectId={defaultProjectId}
               className="mx-auto w-full max-w-none space-y-5"
-              onSuccess={(id) => {
+              onSuccess={(id, mode) => {
                 setOpen(false);
                 setLoaded(false);
                 router.refresh();
-                // Open the send-email dialog so create always leads to customer delivery
+                if (mode === "close") {
+                  router.push("/finance/invoices");
+                  return;
+                }
+                // Open the send-email dialog so create can lead to customer delivery
                 router.push(`/finance/invoices/${id}?email=1`);
               }}
             />

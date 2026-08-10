@@ -1,3 +1,4 @@
+import { businessCalendarDate, calendarDaysPastDue } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 export type CustomerBalance = {
@@ -17,10 +18,8 @@ export type CustomerBalance = {
 
 const OPEN_STATUSES = ["sent", "overdue"] as const;
 
-function daysPastDue(dueDate: string, today: Date): number {
-  const due = new Date(`${dueDate}T00:00:00`);
-  const ms = today.getTime() - due.getTime();
-  return Math.floor(ms / (1000 * 60 * 60 * 24));
+function daysPastDue(dueDate: string, todayYmd: string): number {
+  return calendarDaysPastDue(dueDate, todayYmd) ?? 0;
 }
 
 export async function getCustomerBalance(
@@ -33,8 +32,7 @@ export async function getCustomerBalance(
     .eq("customer_id", customerId)
     .in("status", [...OPEN_STATUSES, "paid"]);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayYmd = businessCalendarDate();
 
   const balance: CustomerBalance = {
     customerId,
@@ -56,7 +54,7 @@ export async function getCustomerBalance(
     balance.openTotal += total;
     balance.openCount += 1;
 
-    const past = daysPastDue(inv.due_date, today);
+    const past = daysPastDue(inv.due_date, todayYmd);
     if (inv.status === "overdue" || past > 0) {
       balance.overdueTotal += total;
       balance.overdueCount += 1;
@@ -117,8 +115,7 @@ export async function getAccountsReceivableOverview(): Promise<{
     .in("status", [...OPEN_STATUSES])
     .order("due_date", { ascending: true });
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayYmd = businessCalendarDate();
 
   const map = new Map<
     string,
@@ -173,7 +170,7 @@ export async function getAccountsReceivableOverview(): Promise<{
     row.openTotal += total;
     row.openCount += 1;
 
-    const past = daysPastDue(inv.due_date, today);
+    const past = daysPastDue(inv.due_date, todayYmd);
     const isOverdue = inv.status === "overdue" || past > 0;
     if (isOverdue) {
       overdueTotal += total;

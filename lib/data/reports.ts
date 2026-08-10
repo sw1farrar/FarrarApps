@@ -1,13 +1,21 @@
 import "server-only";
 
-import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import {
   getAccountsReceivableOverview,
   type ArInvoiceRow,
   type CustomerBalance,
 } from "@/lib/data/balances";
+import {
+  formatDate,
+  toCalendarDateString,
+  toLocalDateString,
+} from "@/lib/format";
 import type { TransactionType } from "@/lib/types/database";
+
+// Re-export for existing report callers
+export { toLocalDateString };
 
 export type ReportKey = "pl" | "ar" | "expenses" | "income";
 
@@ -83,11 +91,6 @@ export type ReportsBundle = CashBasisReport & {
   };
 };
 
-/** Local calendar date YYYY-MM-DD (avoids UTC shift from toISOString). */
-export function toLocalDateString(date = new Date()): string {
-  return format(date, "yyyy-MM-dd");
-}
-
 /** Default report range: first day of current month → today (local). */
 export function defaultReportRange(now = new Date()): {
   from: string;
@@ -95,7 +98,7 @@ export function defaultReportRange(now = new Date()): {
 } {
   return {
     from: format(startOfMonth(now), "yyyy-MM-dd"),
-    to: format(now, "yyyy-MM-dd"),
+    to: toCalendarDateString(now),
   };
 }
 
@@ -332,15 +335,9 @@ export async function getReportsBundle(
   return { ...cash, ar };
 }
 
-/** Human label for a report range (local parse). */
+/** Human label for a report range (calendar dates, no UTC shift). */
 export function formatReportRangeLabel(from: string, to: string): string {
-  try {
-    const f = format(parseISO(from), "MMM d, yyyy");
-    const t = format(parseISO(to), "MMM d, yyyy");
-    return `${f} – ${t}`;
-  } catch {
-    return `${from} – ${to}`;
-  }
+  return `${formatDate(from)} – ${formatDate(to)}`;
 }
 
 export function monthBounds(date = new Date()) {

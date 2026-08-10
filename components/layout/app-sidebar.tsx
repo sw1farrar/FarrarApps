@@ -57,6 +57,10 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  // Defer Base UI menus until after hydration so auto-generated useId values
+  // match between server HTML and the client tree.
+  const [menusReady, setMenusReady] = React.useState(false);
+  React.useEffect(() => setMenusReady(true), []);
 
   async function handleSignOut() {
     const { clearProfileCache } = await import("@/lib/auth/profile-cache");
@@ -72,7 +76,7 @@ export function AppSidebar({
     <TooltipProvider delay={0}>
       <aside
         className={cn(
-          "flex h-full flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-[width] duration-150",
+          "flex h-full flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-[width] duration-[var(--motion-fast)] ease-[var(--motion-ease-exit)]",
           collapsed ? "w-14" : "w-56",
           className
         )}
@@ -103,7 +107,7 @@ export function AppSidebar({
             const content = (
               <span
                 className={cn(
-                  "flex w-full items-center gap-2 border-l-2 px-2 py-1.5 text-sm transition-colors duration-150",
+                  "flex w-full items-center gap-2 border-l-2 px-2 py-1.5 text-sm transition-colors duration-[var(--motion-fast)]",
                   active
                     ? "border-primary bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                     : "border-transparent text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
@@ -144,56 +148,87 @@ export function AppSidebar({
         </nav>
 
         <div className="mt-auto space-y-1 border-t border-border p-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <button
-                  type="button"
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    collapsed && "justify-center px-0"
-                  )}
-                  aria-label="Account menu"
-                />
-              }
+          {menusReady ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      collapsed && "justify-center px-0"
+                    )}
+                    aria-label="Account menu"
+                  />
+                }
+              >
+                {collapsed ? (
+                  <UserRound className="size-4 shrink-0 text-muted-foreground" />
+                ) : (
+                  <>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium">
+                        {profile?.full_name || profile?.email || "Loading…"}
+                      </p>
+                      <p className="truncate text-[11px] capitalize text-muted-foreground">
+                        {profile?.role || " "}
+                      </p>
+                    </div>
+                    <ChevronUp className="size-3.5 shrink-0 text-muted-foreground" />
+                  </>
+                )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side={collapsed ? "right" : "top"}
+                align={collapsed ? "start" : "start"}
+                className="min-w-48"
+              >
+                <DropdownMenuItem
+                  onClick={() => {
+                    onNavigate?.();
+                    router.push("/settings/account");
+                  }}
+                >
+                  <UserRound className="size-4" />
+                  Account settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="size-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <button
+              type="button"
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-muted-foreground",
+                collapsed && "justify-center px-0"
+              )}
+              aria-label="Account menu"
+              disabled
             >
               {collapsed ? (
-                <UserRound className="size-4 shrink-0 text-muted-foreground" />
+                <UserRound className="size-4 shrink-0" />
               ) : (
                 <>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-medium">
                       {profile?.full_name || profile?.email || "Loading…"}
                     </p>
-                    <p className="truncate text-[11px] capitalize text-muted-foreground">
+                    <p className="truncate text-[11px] capitalize">
                       {profile?.role || " "}
                     </p>
                   </div>
-                  <ChevronUp className="size-3.5 shrink-0 text-muted-foreground" />
+                  <ChevronUp className="size-3.5 shrink-0" />
                 </>
               )}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side={collapsed ? "right" : "top"}
-              align={collapsed ? "start" : "start"}
-              className="min-w-48"
-            >
-              <DropdownMenuItem
-                onClick={() => {
-                  onNavigate?.();
-                  router.push("/settings/account");
-                }}
-              >
-                <UserRound className="size-4" />
-                Account settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
-                <LogOut className="size-4" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </button>
+          )}
           <div
             className={cn("flex gap-1", collapsed && "flex-col items-center")}
           >

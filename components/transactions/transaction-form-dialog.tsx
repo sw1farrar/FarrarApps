@@ -8,6 +8,7 @@ import { Loader2, Plus, Upload } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createTransaction } from "@/lib/data/transactions";
 import { createCategory } from "@/lib/data/settings";
+import { toCalendarDateString } from "@/lib/format";
 import type {
   Account,
   Category,
@@ -619,7 +620,7 @@ export function TransactionFormDialog({
                   id="date"
                   name="date"
                   type="date"
-                  defaultValue={new Date().toISOString().slice(0, 10)}
+                  defaultValue={toCalendarDateString()}
                   required
                 />
               </div>

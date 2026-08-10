@@ -3,7 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckCircle2, Download, Loader2, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, Download, Loader2, Pencil, Trash2 } from "lucide-react";
 import { deleteInvoice } from "@/lib/data/invoices";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
@@ -17,7 +18,7 @@ import { InvoiceListEmailButton } from "@/components/invoices/invoice-list-email
 import { InvoiceWorkbenchDialog } from "@/components/invoices/invoice-workbench-dialog";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -90,18 +91,23 @@ export function InvoicesTableClient({
 
   return (
     <>
-      <div className={cn("overflow-x-auto rounded-lg border border-border", className)}>
-        <Table className="min-w-[720px]">
+      <div
+        className={cn(
+          "overflow-x-auto rounded-lg border border-border",
+          className
+        )}
+      >
+        <Table className="min-w-[560px]">
           <TableHeader>
             <TableRow>
               <TableHead>Number</TableHead>
               {showCustomer ? <TableHead>Customer</TableHead> : null}
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead>Issued</TableHead>
-              <TableHead>Due</TableHead>
+              <TableHead className="hidden lg:table-cell">Issued</TableHead>
+              <TableHead className="hidden md:table-cell">Due</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Aging</TableHead>
-              <TableHead className="w-32 text-right">Actions</TableHead>
+              <TableHead className="hidden xl:table-cell">Aging</TableHead>
+              <TableHead className="w-40 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -126,19 +132,27 @@ export function InvoicesTableClient({
                     }
                   }}
                 >
-                  <TableCell className="font-medium font-mono text-sm">
+                  <TableCell className="font-medium font-mono text-sm tabular-nums">
                     {invoice.invoice_number}
                   </TableCell>
                   {showCustomer ? (
                     <TableCell className="text-muted-foreground">
-                      {invoice.customers?.name || "—"}
+                      {invoice.customers?.name || (
+                        <span className="italic text-muted-foreground/80">
+                          No customer
+                        </span>
+                      )}
                     </TableCell>
                   ) : null}
                   <TableCell className="text-right tabular-nums font-medium">
                     {formatCurrency(invoice.total)}
                   </TableCell>
-                  <TableCell>{formatDate(invoice.issue_date)}</TableCell>
-                  <TableCell>{formatDate(invoice.due_date)}</TableCell>
+                  <TableCell className="hidden tabular-nums lg:table-cell">
+                    {formatDate(invoice.issue_date)}
+                  </TableCell>
+                  <TableCell className="hidden tabular-nums md:table-cell">
+                    {formatDate(invoice.due_date)}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       className={cn(
@@ -157,7 +171,7 @@ export function InvoicesTableClient({
                   </TableCell>
                   <TableCell
                     className={cn(
-                      "text-sm tabular-nums",
+                      "hidden text-sm tabular-nums xl:table-cell",
                       label === "Past due" &&
                         "font-medium text-orange-700 dark:text-orange-400"
                     )}
@@ -170,6 +184,18 @@ export function InvoicesTableClient({
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
+                      {invoice.status === "draft" ? (
+                        <Link
+                          href={`/finance/invoices/${invoice.id}/edit`}
+                          title="Edit invoice"
+                          className={cn(
+                            buttonVariants({ variant: "ghost", size: "icon" }),
+                            "size-8"
+                          )}
+                        >
+                          <Pencil className="size-4" />
+                        </Link>
+                      ) : null}
                       <InvoiceListEmailButton invoice={invoice} />
                       <Button
                         type="button"

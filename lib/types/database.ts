@@ -177,7 +177,8 @@ export type Category = {
 
 export type Invoice = {
   id: string;
-  customer_id: string;
+  /** Null on incomplete draft shells; required before send/pay. */
+  customer_id: string | null;
   project_id: string | null;
   invoice_number: string;
   status: InvoiceStatus;
@@ -199,6 +200,8 @@ export type InvoiceLineItem = {
   id: string;
   invoice_id: string;
   description: string;
+  /** Optional work/service date; omitted from display when null/undefined. */
+  service_date?: string | null;
   quantity: number;
   rate: number;
   amount: number;

@@ -1,7 +1,7 @@
 import "server-only";
 import pg from "pg";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatCurrency } from "@/lib/format";
+import { businessCalendarDate, formatCurrency } from "@/lib/format";
 import { expireOpenCheckoutSessionsAfterPaid } from "@/lib/stripe/expire-open-sessions";
 
 type ApplyInput = {
@@ -345,7 +345,7 @@ async function applyViaPg(
        ) returning id`,
       [
         invoiceAmount,
-        new Date().toISOString().slice(0, 10),
+        businessCalendarDate(),
         `Stripe payment for ${invoice.invoice_number}`,
         input.paymentIntentId || input.checkoutSessionId || null,
         stripeAccountId,
@@ -559,7 +559,7 @@ async function applyViaSupabase(
     .insert({
       type: "income",
       amount: invoiceAmount,
-      date: new Date().toISOString().slice(0, 10),
+      date: businessCalendarDate(),
       description: `Stripe payment for ${invoice.invoice_number}`,
       reference: input.paymentIntentId || input.checkoutSessionId || null,
       account_id: stripeAccount.id,

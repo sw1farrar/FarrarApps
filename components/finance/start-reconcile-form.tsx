@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { startReconciliation } from "@/lib/data/reconciliations";
+import { toCalendarDateString } from "@/lib/format";
 import type { Account } from "@/lib/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,7 +74,7 @@ export function StartReconcileForm({
           name="statement_date"
           type="date"
           required
-          defaultValue={new Date().toISOString().slice(0, 10)}
+          defaultValue={toCalendarDateString()}
         />
       </div>
       <div className="space-y-1.5">

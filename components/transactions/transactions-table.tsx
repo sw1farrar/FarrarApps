@@ -47,18 +47,26 @@ export function TransactionsTable({
       <div className="overflow-x-auto rounded-lg border border-border">
         <Table
           className={cn(
-            showRunning ? "min-w-[820px]" : showAccountCol ? "min-w-[960px]" : "min-w-[760px]"
+            showRunning
+              ? "min-w-[640px]"
+              : showAccountCol
+                ? "min-w-[640px]"
+                : "min-w-[560px]"
           )}
         >
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
-              {showAccountCol ? <TableHead>Account</TableHead> : null}
+              {showAccountCol ? (
+                <TableHead className="hidden lg:table-cell">Account</TableHead>
+              ) : null}
               <TableHead>Type</TableHead>
-              <TableHead className="min-w-48">Description</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-center">Reconciled</TableHead>
+              <TableHead className="min-w-40">Description</TableHead>
+              <TableHead className="hidden md:table-cell">Customer</TableHead>
+              <TableHead className="hidden xl:table-cell">Category</TableHead>
+              <TableHead className="hidden text-center lg:table-cell">
+                Reconciled
+              </TableHead>
               <TableHead className="text-right">Amount</TableHead>
               {showRunning ? (
                 <TableHead className="text-right">Balance</TableHead>
@@ -88,11 +96,11 @@ export function TransactionsTable({
                     }
                   }}
                 >
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className="whitespace-nowrap tabular-nums">
                     {formatDate(transaction.date)}
                   </TableCell>
                   {showAccountCol ? (
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="hidden whitespace-nowrap lg:table-cell">
                       {transaction.type === "transfer" ? (
                         <span className="text-sm">
                           {transaction.account_id ? (
@@ -169,7 +177,7 @@ export function TransactionsTable({
                       )
                     ) : null}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {transaction.customer_id && transaction.customers?.name ? (
                       <Link
                         href={`/customers/${transaction.customer_id}`}
@@ -182,14 +190,14 @@ export function TransactionsTable({
                       "—"
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden text-muted-foreground xl:table-cell">
                     {transaction.type === "expense"
                       ? transaction.categories?.name || "Uncategorized"
                       : transaction.type === "income"
                         ? transaction.categories?.name || "—"
                         : "—"}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="hidden text-center lg:table-cell">
                     {transaction.reconciled_at ? (
                       <Check
                         className="mx-auto size-4 text-foreground"

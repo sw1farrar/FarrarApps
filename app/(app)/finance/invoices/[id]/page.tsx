@@ -49,11 +49,11 @@ export default async function FinanceInvoiceDetailPage({
 
   if (!invoice) notFound();
 
-  const [{ data: lines }, { data: accounts }, { data: customer }, { data: company }] =
+  const [{ data: lines }, { data: accounts }, customerRes, { data: company }] =
     await Promise.all([
       supabase
         .from("invoice_line_items")
-        .select("id, description, quantity, rate, amount")
+        .select("id, description, quantity, rate, amount, service_date")
         .eq("invoice_id", id)
         .order("sort_order"),
       supabase
@@ -61,17 +61,20 @@ export default async function FinanceInvoiceDetailPage({
         .select("id, name, is_active")
         .eq("is_active", true)
         .order("name"),
-      supabase
-        .from("customers")
-        .select("id, name, company, email, address, city, state, zip")
-        .eq("id", invoice.customer_id)
-        .single(),
+      invoice.customer_id
+        ? supabase
+            .from("customers")
+            .select("id, name, company, email, address, city, state, zip")
+            .eq("id", invoice.customer_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
       supabase
         .from("company_settings")
         .select("name, address, email, logo_path, invoice_terms")
         .limit(1)
         .maybeSingle(),
     ]);
+  const customer = customerRes.data;
 
   const typedCompany = (company as CompanySettings | null) ?? null;
   const typed = invoice as unknown as Invoice;
@@ -103,8 +106,8 @@ export default async function FinanceInvoiceDetailPage({
             {typed.invoice_number}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {typed.customers?.name} · issued {formatDate(typed.issue_date)} · due{" "}
-            {formatDate(typed.due_date)}
+            {typed.customers?.name || "No customer yet"} · issued{" "}
+            {formatDate(typed.issue_date)} · due {formatDate(typed.due_date)}
           </p>
         </div>
         <div className="space-y-2">
@@ -149,7 +152,18 @@ export default async function FinanceInvoiceDetailPage({
             <TableBody>
               {typedLines.map((line) => (
                 <TableRow key={line.id}>
-                  <TableCell>{line.description}</TableCell>
+                  <TableCell>
+                    {line.service_date ? (
+                      <div className="space-y-0.5">
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(line.service_date)}
+                        </p>
+                        <p>{line.description}</p>
+                      </div>
+                    ) : (
+                      line.description
+                    )}
+                  </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {Number(line.quantity)}
                   </TableCell>

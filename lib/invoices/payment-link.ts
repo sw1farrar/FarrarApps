@@ -27,9 +27,19 @@ function appOrigin() {
 function defaultExpiresAt(dueDate?: string | null) {
   const now = Date.now();
   const min = now + 30 * 86_400_000;
-  const fromDue = dueDate
-    ? new Date(dueDate).getTime() + 60 * 86_400_000
-    : min;
+  // dueDate is a calendar day (YYYY-MM-DD). Parse as local midnight, not UTC.
+  let fromDue = min;
+  if (dueDate) {
+    const ymd = String(dueDate).slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+      const [y, m, d] = ymd.split("-").map(Number);
+      // End of due day + 60 days, as UTC instant for expires_at timestamptz
+      fromDue = Date.UTC(y, m - 1, d + 60, 23, 59, 59, 999);
+    } else {
+      const parsed = new Date(dueDate).getTime();
+      if (Number.isFinite(parsed)) fromDue = parsed + 60 * 86_400_000;
+    }
+  }
   const max = now + 90 * 86_400_000;
   return new Date(Math.min(Math.max(min, fromDue), max)).toISOString();
 }

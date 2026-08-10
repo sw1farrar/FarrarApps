@@ -3,6 +3,14 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 
 import { cn } from "@/lib/utils"
 
+const isDateLike =
+  (type?: string) =>
+    type === "date" ||
+    type === "time" ||
+    type === "datetime-local" ||
+    type === "month" ||
+    type === "week"
+
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
     <InputPrimitive
@@ -10,6 +18,9 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       data-slot="input"
       className={cn(
         "h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 py-1 text-base text-foreground transition-[border-color,box-shadow] duration-150 outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 md:text-sm dark:bg-card",
+        // Native date/time controls need an explicit scheme or Chromium keeps
+        // black segment text / calendar icon on dark backgrounds.
+        isDateLike(type) && "scheme-light dark:scheme-dark",
         className
       )}
       {...props}

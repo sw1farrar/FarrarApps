@@ -1,5 +1,6 @@
 "use server";
 
+import { businessCalendarDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 export async function syncOverdueNotifications() {
@@ -16,7 +17,7 @@ export async function syncOverdueNotifications() {
     .maybeSingle();
   if (profile?.role !== "owner" && profile?.role !== "staff") return;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = businessCalendarDate();
 
   const { data: overdue } = await supabase
     .from("invoices")

@@ -10,6 +10,10 @@ import {
 } from "@/lib/email/invoice-template";
 import { renderInvoicePdfBuffer } from "@/lib/pdf/render-invoice-pdf";
 import { resolveEmailLogoSrc } from "@/lib/email/resolve-logo";
+import {
+  addCalendarDays,
+  businessCalendarDate,
+} from "@/lib/format";
 import type { ActionResult } from "@/lib/data/customers";
 import type {
   Account,
@@ -24,10 +28,35 @@ type LineInput = {
   description: string;
   quantity: number;
   rate: number;
+  /** Optional YYYY-MM-DD; null/empty omits date on the line. */
+  service_date?: string | null;
 };
 
 function money(n: number) {
   return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+/** Coerce blank/invalid calendar values to null so Postgres never sees "". */
+function optionalDate(value: unknown): string | null {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s || s === "null" || s === "undefined") return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  return s;
+}
+
+function requiredDate(value: unknown, label: string): string | { error: string } {
+  const d = optionalDate(value);
+  if (!d) return { error: `${label} is required` };
+  return d;
+}
+
+function defaultIssueDate() {
+  return businessCalendarDate();
+}
+
+function defaultDueDate() {
+  return addCalendarDays(businessCalendarDate(), 30);
 }
 
 function computeTotals(lines: LineInput[], tax: number) {
@@ -40,6 +69,41 @@ function computeTotals(lines: LineInput[], tax: number) {
     tax: taxAmount,
     total: money(subtotal + taxAmount),
   };
+}
+
+type InvoiceWriteInput = {
+  customer_id?: string | null;
+  project_id?: string | null;
+  issue_date?: string | null;
+  due_date?: string | null;
+  notes?: string | null;
+  tax?: number;
+  lines: LineInput[];
+  /**
+   * When true, allow incomplete draft shells (no customer, dates, or lines).
+   * Full "Create invoice" / "Save invoice" paths leave this false.
+   */
+  allowIncomplete?: boolean;
+};
+
+function validateCompleteInvoice(input: InvoiceWriteInput): string | null {
+  if (!input.customer_id) return "Customer is required";
+  if (!input.lines.length) return "Add at least one line item";
+  if (typeof requiredDate(input.issue_date, "Issue date") === "object") {
+    return "Issue date is required";
+  }
+  if (typeof requiredDate(input.due_date, "Due date") === "object") {
+    return "Due date is required";
+  }
+  for (const line of input.lines) {
+    if (line.quantity < 0) return "Quantity cannot be negative";
+    if (line.rate < 0) return "Rate cannot be negative";
+    if (line.quantity === 0 && line.rate === 0) {
+      return "Each line needs a quantity or rate";
+    }
+  }
+  if ((input.tax ?? 0) < 0) return "Tax cannot be negative";
+  return null;
 }
 
 async function nextInvoiceNumber(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -57,35 +121,54 @@ async function nextInvoiceNumber(supabase: Awaited<ReturnType<typeof createClien
   return `${prefix}${String(seq).padStart(4, "0")}`;
 }
 
-export async function createInvoice(input: {
-  customer_id: string;
-  project_id?: string | null;
-  issue_date: string;
-  due_date: string;
-  notes?: string | null;
-  tax?: number;
-  lines: LineInput[];
-}): Promise<ActionResult> {
+function normalizeWriteInput(input: InvoiceWriteInput) {
+  const lines = (input.lines ?? []).filter((line) => line.description?.trim());
+  const tax = money(input.tax ?? 0);
+  return {
+    customer_id: input.customer_id?.trim() || null,
+    project_id: input.project_id || null,
+    issue_date: optionalDate(input.issue_date) ?? defaultIssueDate(),
+    due_date: optionalDate(input.due_date) ?? defaultDueDate(),
+    notes: input.notes || null,
+    tax,
+    lines: lines.map((line) => ({
+      description: line.description.trim(),
+      quantity: Number(line.quantity) || 0,
+      rate: Number(line.rate) || 0,
+      service_date: optionalDate(line.service_date),
+    })),
+  };
+}
+
+export async function createInvoice(
+  input: InvoiceWriteInput
+): Promise<ActionResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!input.customer_id) return { ok: false, error: "Customer is required" };
-  if (!input.lines.length) return { ok: false, error: "Add at least one line item" };
+  const allowIncomplete = input.allowIncomplete === true;
+  if (!allowIncomplete) {
+    const completeError = validateCompleteInvoice(input);
+    if (completeError) return { ok: false, error: completeError };
+  } else if ((input.tax ?? 0) < 0) {
+    return { ok: false, error: "Tax cannot be negative" };
+  }
 
-  const totals = computeTotals(input.lines, input.tax ?? 0);
+  const normalized = normalizeWriteInput(input);
+  const totals = computeTotals(normalized.lines, normalized.tax);
   const invoice_number = await nextInvoiceNumber(supabase);
 
   const { data: invoice, error } = await supabase
     .from("invoices")
     .insert({
-      customer_id: input.customer_id,
-      project_id: input.project_id || null,
+      customer_id: normalized.customer_id,
+      project_id: normalized.project_id,
       invoice_number,
-      issue_date: input.issue_date,
-      due_date: input.due_date,
-      notes: input.notes || null,
+      issue_date: normalized.issue_date,
+      due_date: normalized.due_date,
+      notes: normalized.notes,
       subtotal: totals.subtotal,
       tax: totals.tax,
       total: totals.total,
@@ -97,24 +180,26 @@ export async function createInvoice(input: {
 
   if (error) return { ok: false, error: error.message };
 
-  const { error: lineError } = await supabase.from("invoice_line_items").insert(
-    input.lines.map((line, index) => ({
-      invoice_id: invoice.id,
-      description: line.description,
-      quantity: line.quantity,
-      rate: line.rate,
-      amount: money(line.quantity * line.rate),
-      sort_order: index,
-    }))
-  );
-
-  if (lineError) return { ok: false, error: lineError.message };
+  if (normalized.lines.length) {
+    const { error: lineError } = await supabase.from("invoice_line_items").insert(
+      normalized.lines.map((line, index) => ({
+        invoice_id: invoice.id,
+        description: line.description,
+        quantity: line.quantity,
+        rate: line.rate,
+        amount: money(line.quantity * line.rate),
+        service_date: line.service_date,
+        sort_order: index,
+      }))
+    );
+    if (lineError) return { ok: false, error: lineError.message };
+  }
 
   await logActivity({
     action: "created",
     entity_type: "invoice",
     entity_id: invoice.id,
-    meta: { invoice_number, total: totals.total },
+    meta: { invoice_number, total: totals.total, incomplete: allowIncomplete },
   });
 
   revalidatePath("/finance/invoices");
@@ -124,20 +209,17 @@ export async function createInvoice(input: {
 
 export async function updateInvoice(
   id: string,
-  input: {
-    customer_id: string;
-    project_id?: string | null;
-    issue_date: string;
-    due_date: string;
-    notes?: string | null;
-    tax?: number;
-    lines: LineInput[];
-  }
+  input: InvoiceWriteInput
 ): Promise<ActionResult> {
   const supabase = await createClient();
 
-  if (!input.customer_id) return { ok: false, error: "Customer is required" };
-  if (!input.lines.length) return { ok: false, error: "Add at least one line item" };
+  const allowIncomplete = input.allowIncomplete === true;
+  if (!allowIncomplete) {
+    const completeError = validateCompleteInvoice(input);
+    if (completeError) return { ok: false, error: completeError };
+  } else if ((input.tax ?? 0) < 0) {
+    return { ok: false, error: "Tax cannot be negative" };
+  }
 
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
@@ -152,15 +234,16 @@ export async function updateInvoice(
     return { ok: false, error: "Only draft invoices can be edited" };
   }
 
-  const totals = computeTotals(input.lines, input.tax ?? 0);
+  const normalized = normalizeWriteInput(input);
+  const totals = computeTotals(normalized.lines, normalized.tax);
   const { error } = await supabase
     .from("invoices")
     .update({
-      customer_id: input.customer_id,
-      project_id: input.project_id || null,
-      issue_date: input.issue_date,
-      due_date: input.due_date,
-      notes: input.notes || null,
+      customer_id: normalized.customer_id,
+      project_id: normalized.project_id,
+      issue_date: normalized.issue_date,
+      due_date: normalized.due_date,
+      notes: normalized.notes,
       subtotal: totals.subtotal,
       tax: totals.tax,
       total: totals.total,
@@ -176,24 +259,30 @@ export async function updateInvoice(
     .eq("invoice_id", id);
   if (deleteError) return { ok: false, error: deleteError.message };
 
-  const { error: lineError } = await supabase.from("invoice_line_items").insert(
-    input.lines.map((line, index) => ({
-      invoice_id: id,
-      description: line.description,
-      quantity: line.quantity,
-      rate: line.rate,
-      amount: money(line.quantity * line.rate),
-      sort_order: index,
-    }))
-  );
-
-  if (lineError) return { ok: false, error: lineError.message };
+  if (normalized.lines.length) {
+    const { error: lineError } = await supabase.from("invoice_line_items").insert(
+      normalized.lines.map((line, index) => ({
+        invoice_id: id,
+        description: line.description,
+        quantity: line.quantity,
+        rate: line.rate,
+        amount: money(line.quantity * line.rate),
+        service_date: line.service_date,
+        sort_order: index,
+      }))
+    );
+    if (lineError) return { ok: false, error: lineError.message };
+  }
 
   await logActivity({
     action: "updated",
     entity_type: "invoice",
     entity_id: id,
-    meta: { invoice_number: invoice.invoice_number, total: totals.total },
+    meta: {
+      invoice_number: invoice.invoice_number,
+      total: totals.total,
+      incomplete: allowIncomplete,
+    },
   });
 
   revalidatePath("/finance/invoices");
@@ -236,7 +325,7 @@ export async function getInvoiceWorkbenchData(
   const [
     { data: lines },
     { data: accounts },
-    { data: customer },
+    customerRes,
     { data: company },
     { data: stripePay },
   ] = await Promise.all([
@@ -250,11 +339,13 @@ export async function getInvoiceWorkbenchData(
       .select("*")
       .eq("is_active", true)
       .order("name"),
-    supabase
-      .from("customers")
-      .select("*")
-      .eq("id", invoice.customer_id)
-      .maybeSingle(),
+    invoice.customer_id
+      ? supabase
+          .from("customers")
+          .select("*")
+          .eq("id", invoice.customer_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
     supabase.from("company_settings").select("*").limit(1).maybeSingle(),
     supabase
       .from("stripe_invoice_payments")
@@ -265,6 +356,7 @@ export async function getInvoiceWorkbenchData(
       .limit(1)
       .maybeSingle(),
   ]);
+  const customer = customerRes.data;
 
   const typedCompany = (company as CompanySettings | null) ?? null;
   const typedInvoice = invoice as unknown as Invoice;
@@ -348,6 +440,32 @@ export async function updateInvoiceStatus(
   status: InvoiceStatus
 ): Promise<ActionResult> {
   const supabase = await createClient();
+
+  // Leaving draft requires a complete invoice (customer + at least one line).
+  if (status !== "draft") {
+    const { data: invoice } = await supabase
+      .from("invoices")
+      .select("customer_id, total")
+      .eq("id", id)
+      .single();
+    if (!invoice?.customer_id) {
+      return {
+        ok: false,
+        error: "Add a customer before leaving draft",
+      };
+    }
+    const { count } = await supabase
+      .from("invoice_line_items")
+      .select("id", { count: "exact", head: true })
+      .eq("invoice_id", id);
+    if ((count ?? 0) < 1) {
+      return {
+        ok: false,
+        error: "Add at least one line item before leaving draft",
+      };
+    }
+  }
+
   const patch: Record<string, unknown> = { status };
   if (status === "paid") patch.paid_at = new Date().toISOString();
   if (status !== "paid") patch.paid_at = null;
@@ -449,7 +567,7 @@ export async function recordInvoicePayment(
   const { error: txError } = await supabase.from("transactions").insert({
     type: "income",
     amount: invoice.total,
-    date: new Date().toISOString().slice(0, 10),
+    date: businessCalendarDate(),
     description: `Payment for ${invoice.invoice_number}`,
     account_id: accountId,
     category_id: category?.id ?? null,
@@ -500,6 +618,13 @@ export async function sendInvoiceEmail(input: {
     return resendPaymentReceipt({ invoiceId, toEmail });
   }
 
+  if (!invoice.customer_id) {
+    return {
+      ok: false,
+      error: "Add a customer before sending this invoice",
+    };
+  }
+
   const [{ data: customer }, { data: lines }, { data: company }] =
     await Promise.all([
       supabase
@@ -514,6 +639,13 @@ export async function sendInvoiceEmail(input: {
         .order("sort_order"),
       supabase.from("company_settings").select("*").limit(1).maybeSingle(),
     ]);
+
+  if (!(lines ?? []).length) {
+    return {
+      ok: false,
+      error: "Add at least one line item before sending",
+    };
+  }
 
   if (!customer?.email && !toEmail) {
     return {

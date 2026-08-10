@@ -4,18 +4,18 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Table without an outer scroll wrapper — callers provide a single
+ * `overflow-x-auto` (or combined overflow) parent to avoid double scrollports.
+ * Sticky heads use solid bg so content doesn't show through while scrolling.
+ */
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full overflow-x-auto"
-    >
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
-    </div>
+    <table
+      data-slot="table"
+      className={cn("w-full caption-bottom text-sm", className)}
+      {...props}
+    />
   )
 }
 
@@ -57,7 +57,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "border-b transition-colors duration-[var(--motion-instant)] hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted focus-visible:bg-muted/50 focus-visible:outline-none",
         className
       )}
       {...props}
@@ -70,7 +70,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "sticky top-0 z-10 h-10 bg-card px-2 text-left align-middle font-medium whitespace-nowrap text-foreground shadow-[inset_0_-1px_0_0_var(--border)] [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

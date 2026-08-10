@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/data/activity";
+import { businessCalendarDate } from "@/lib/format";
 import type { ActionResult } from "@/lib/data/customers";
 import type { TransactionType } from "@/lib/types/database";
 
@@ -18,7 +19,7 @@ export async function createTransaction(
   const payload = {
     type: String(formData.get("type") || "expense") as TransactionType,
     amount,
-    date: String(formData.get("date") || new Date().toISOString().slice(0, 10)),
+    date: String(formData.get("date") || businessCalendarDate()),
     description: String(formData.get("description") || "").trim() || null,
     reference: String(formData.get("reference") || "").trim() || null,
     account_id: String(formData.get("account_id") || ""),
@@ -110,7 +111,7 @@ export async function updateTransaction(
   const payload = {
     type: String(formData.get("type") || "expense") as TransactionType,
     amount,
-    date: String(formData.get("date") || new Date().toISOString().slice(0, 10)),
+    date: String(formData.get("date") || businessCalendarDate()),
     description: String(formData.get("description") || "").trim() || null,
     reference: String(formData.get("reference") || "").trim() || null,
     account_id: String(formData.get("account_id") || ""),

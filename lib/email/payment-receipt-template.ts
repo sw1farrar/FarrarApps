@@ -95,7 +95,7 @@ export function buildPaymentReceiptEmailHtml(input: {
               <p style="margin:0 0 20px;font-size:14px;color:#333;line-height:1.6;">
                 Hi ${escapeHtml(customer.name)},<br /><br />
                 Thank you for your payment. Here is a summary of charges for invoice ${escapeHtml(invoice.invoice_number)}.
-                A PDF of the paid invoice${feeAmount > 0 ? " (including the card processing fee)" : ""} is attached so totals match what was charged.
+                The attached invoice shows the amount paid to ${escapeHtml(companyName)}.${feeAmount > 0 ? " The card processing fee is listed separately because it is paid to the processor, not to " + escapeHtml(companyName) + "." : ""}
               </p>
 
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;background:#fafaf8;border:1px solid #ecece8;border-radius:12px;">
@@ -177,7 +177,7 @@ export function buildPaymentReceiptEmailText(input: {
     `Total paid: ${formatCurrency(input.chargeAmount)}`,
     "",
     input.feeAmount > 0
-      ? `A PDF of the paid invoice (including the card processing fee) is attached.`
+      ? `The attached invoice shows the amount paid to ${companyName}. The card processing fee is listed separately because it is paid to the processor, not to ${companyName}.`
       : `A PDF of the paid invoice is attached.`,
     "",
     companyName

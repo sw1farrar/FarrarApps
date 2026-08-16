@@ -10,6 +10,7 @@ import type {
   InvoiceLineItem,
 } from "@/lib/types/database";
 import { InvoiceActions } from "@/components/invoices/invoice-actions";
+import { InvoiceHowPaidCard } from "@/components/invoices/invoice-how-paid-card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -129,7 +130,6 @@ export default async function FinanceInvoiceDetailPage({
             lines={typedLines}
             company={typedCompany}
             logoUrl={logo?.signedUrl ?? null}
-            cardFee={cardFee}
             initialEmailOpen={openEmail}
           />
         </div>
@@ -190,44 +190,28 @@ export default async function FinanceInvoiceDetailPage({
                 {formatCurrency(typed.tax)}
               </span>
             </div>
-            {cardFee && cardFee.feeAmount > 0 ? (
-              <>
-                <div className="flex justify-end gap-8">
-                  <span className="text-muted-foreground">Invoice amount</span>
-                  <span className="w-28 text-right tabular-nums">
-                    {formatCurrency(cardFee.invoiceAmount)}
-                  </span>
-                </div>
-                <div className="flex justify-end gap-8">
-                  <span className="text-muted-foreground">
-                    Card processing fee
-                  </span>
-                  <span className="w-28 text-right tabular-nums">
-                    {formatCurrency(cardFee.feeAmount)}
-                  </span>
-                </div>
-                <div className="flex justify-end gap-8 font-semibold">
-                  <span>
-                    {typed.status === "paid" ? "Amount paid" : "Total charged"}
-                  </span>
-                  <span className="w-28 text-right tabular-nums">
-                    {formatCurrency(cardFee.chargeAmount)}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <div className="flex justify-end gap-8 font-medium">
-                <span>
-                  {typed.status === "paid" ? "Amount paid" : "Total"}
-                </span>
-                <span className="w-28 text-right tabular-nums">
-                  {formatCurrency(typed.total)}
-                </span>
-              </div>
-            )}
+            <div className="flex justify-end gap-8 font-medium">
+              <span>
+                {typed.status === "paid" ? "Amount paid" : "Total"}
+              </span>
+              <span className="w-28 text-right tabular-nums">
+                {formatCurrency(typed.total)}
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      {cardFee && cardFee.feeAmount > 0 ? (
+        <InvoiceHowPaidCard
+          invoice={typed}
+          lines={typedLines}
+          customer={(customer as Customer) ?? null}
+          company={typedCompany}
+          logoUrl={logo?.signedUrl ?? null}
+          cardFee={cardFee}
+        />
+      ) : null}
     </div>
   );
 }

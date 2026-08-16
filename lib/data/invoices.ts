@@ -938,3 +938,33 @@ export async function resendPaymentReceipt(input: {
     message: `Payment receipt emailed to ${recipient}`,
   };
 }
+
+/** Customer receipt PDF (invoice totals + remittance). Same bytes as the email attachment. */
+export async function downloadPaymentReceiptPdf(invoiceId: string): Promise<
+  | { ok: true; filename: string; contentBase64: string }
+  | { ok: false; error: string }
+> {
+  const ctx = await getPaymentReceiptContext(invoiceId);
+  if (!ctx.ok) return ctx;
+
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+    "http://localhost:3000";
+  const logoSrc = ctx.data.logoUrl || `${origin}/farrar_apps_logo.png`;
+
+  const pdfBuffer = await renderInvoicePdfBuffer({
+    invoice: ctx.data.invoice,
+    lines: ctx.data.lines,
+    customer: ctx.data.customer,
+    company: ctx.data.company,
+    logoSrc,
+    cardFee: ctx.data.cardFee,
+    includeCardRemittance: true,
+  });
+
+  return {
+    ok: true,
+    filename: `${ctx.data.invoice.invoice_number}-receipt.pdf`,
+    contentBase64: Buffer.from(pdfBuffer).toString("base64"),
+  };
+}

@@ -122,6 +122,7 @@ export async function sendPaymentReceiptEmail(input: {
       company: typedCompany,
       logoSrc,
       cardFee,
+      includeCardRemittance: true,
     });
 
     const htmlContent = buildPaymentReceiptEmailHtml({

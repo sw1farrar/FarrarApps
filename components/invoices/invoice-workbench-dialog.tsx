@@ -119,7 +119,6 @@ export function InvoiceWorkbenchDialog({
               lines={data.lines}
               company={data.company}
               logoUrl={data.logoUrl}
-              cardFee={data.cardFee}
               showPreviewButton={false}
               onChanged={handleChanged}
             />
@@ -153,7 +152,6 @@ export function InvoiceWorkbenchDialog({
               customer={data.customer}
               company={data.company}
               logoUrl={data.logoUrl}
-              cardFee={data.cardFee}
             />
           ) : null}
         </div>

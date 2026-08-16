@@ -32,6 +32,7 @@ export default function InvoicePdfClient({
   company,
   initialLogoSrc,
   cardFee,
+  includeCardRemittance = false,
 }: {
   invoice: Invoice;
   lines: InvoiceLineItem[];
@@ -39,6 +40,7 @@ export default function InvoicePdfClient({
   company: CompanySettings | null;
   initialLogoSrc?: string;
   cardFee?: InvoiceCardFeeDisplay | null;
+  includeCardRemittance?: boolean;
 }) {
   const [logoSrc, setLogoSrc] = useState(
     initialLogoSrc || "/farrar_apps_logo.png"
@@ -62,6 +64,7 @@ export default function InvoicePdfClient({
           company={company}
           logoSrc={logoSrc}
           cardFee={cardFee}
+          includeCardRemittance={includeCardRemittance}
         />
       ) : (
         <div className="flex h-full items-center justify-center text-sm text-muted-foreground">

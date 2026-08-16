@@ -16,6 +16,7 @@ export async function renderInvoicePdfBuffer(input: {
   company: CompanySettings | null;
   logoSrc: string;
   cardFee?: InvoiceCardFeeDisplay | null;
+  includeCardRemittance?: boolean;
 }) {
   return renderToBuffer(
     <InvoicePdfDocument
@@ -25,6 +26,7 @@ export async function renderInvoicePdfBuffer(input: {
       company={input.company}
       logoSrc={input.logoSrc}
       cardFee={input.cardFee}
+      includeCardRemittance={input.includeCardRemittance}
     />
   );
 }

@@ -1,6 +1,11 @@
 import Image from "next/image";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { InvoiceCardFeeDisplay } from "@/lib/invoices/card-fee-display";
+import {
+  remittanceCompanyName,
+  remittanceCopy,
+  shouldShowCardRemittance,
+} from "@/lib/invoices/card-fee-remittance";
 import type {
   CompanySettings,
   Customer,
@@ -15,23 +20,29 @@ export function InvoicePaperPreview({
   company,
   logoUrl,
   cardFee,
+  includeCardRemittance = false,
 }: {
   invoice: Invoice;
   lines: InvoiceLineItem[];
   customer: Customer | null;
   company: CompanySettings | null;
   logoUrl?: string | null;
-  /** When paid online with pass-through fee — final total matches card charge. */
   cardFee?: InvoiceCardFeeDisplay | null;
+  /** Customer receipt only — remittance sits below booked invoice totals. */
+  includeCardRemittance?: boolean;
 }) {
-  const companyName = company?.name || "Farrar Apps";
+  const companyName = remittanceCompanyName(company?.name);
   const terms =
     invoice.notes ||
     company?.invoice_terms ||
     "Payment is due within 30 days of invoice date.";
-  const showFee = Boolean(cardFee && cardFee.feeAmount > 0);
-  const isPaid = invoice.status === "paid" || Boolean(cardFee);
-  const paidDate = cardFee?.paidAt || invoice.paid_at;
+  const showRemittance = shouldShowCardRemittance(
+    includeCardRemittance,
+    cardFee
+  );
+  const copy = remittanceCopy(companyName);
+  const isPaid = invoice.status === "paid";
+  const paidDate = invoice.paid_at;
 
   return (
     <div className="bg-[#f3f3f1] p-4 text-[#1a1a1a]">
@@ -67,7 +78,6 @@ export function InvoicePaperPreview({
               <p className="font-semibold text-emerald-700">
                 PAID
                 {paidDate ? ` · ${formatDate(paidDate)}` : ""}
-                {showFee ? " · includes card processing fee" : ""}
               </p>
             ) : null}
           </div>
@@ -127,48 +137,43 @@ export function InvoicePaperPreview({
                 </span>
               </div>
             ) : null}
-            {showFee && cardFee ? (
-              <>
-                <div className="flex justify-end gap-6">
-                  <span className="text-[#666]">Invoice total</span>
-                  <span className="w-20 tabular-nums">
-                    {formatCurrency(cardFee.invoiceAmount)}
-                  </span>
-                </div>
-                <div className="flex justify-end gap-6">
-                  <span className="text-[#666]">Card processing fee</span>
-                  <span className="w-20 tabular-nums">
-                    {formatCurrency(cardFee.feeAmount)}
-                  </span>
-                </div>
-                <div className="mt-1 flex justify-end gap-6 border-t border-[#111] pt-1 text-xs font-semibold text-[#1a1a1a]">
-                  <span>{isPaid ? "Amount paid" : "Total due"}</span>
-                  <span className="w-20 tabular-nums">
-                    {formatCurrency(cardFee.chargeAmount)}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <div className="mt-1 flex justify-end gap-6 border-t border-[#111] pt-1 text-xs font-semibold text-[#1a1a1a]">
-                <span>{isPaid ? "Amount paid" : "Total"}</span>
-                <span className="w-20 tabular-nums">
-                  {formatCurrency(invoice.total)}
+            <div className="mt-1 flex justify-end gap-6 border-t border-[#111] pt-1 text-xs font-semibold text-[#1a1a1a]">
+              <span>{isPaid ? "Amount paid" : "Total"}</span>
+              <span className="w-20 tabular-nums">
+                {formatCurrency(invoice.total)}
+              </span>
+            </div>
+          </div>
+
+          {showRemittance && cardFee ? (
+            <div className="mt-3 shrink-0 rounded-md border border-[#ecece8] bg-[#fafaf8] px-2.5 py-2 text-left text-[9px] leading-4 text-[#444]">
+              <p className="mb-1.5 text-[8px] font-semibold uppercase tracking-wide text-[#666]">
+                {copy.heading}
+              </p>
+              <div className="flex justify-between gap-3">
+                <span>{copy.paidToLabel}</span>
+                <span className="tabular-nums">
+                  {formatCurrency(cardFee.invoiceAmount)}
                 </span>
               </div>
-            )}
-          </div>
+              <div className="flex justify-between gap-3">
+                <span>{copy.feeLabel}</span>
+                <span className="tabular-nums">
+                  {formatCurrency(cardFee.feeAmount)}
+                </span>
+              </div>
+              <div className="mt-1 flex justify-between gap-3 border-t border-[#ddd] pt-1 font-semibold text-[#1a1a1a]">
+                <span>{copy.cardTotalLabel}</span>
+                <span className="tabular-nums">
+                  {formatCurrency(cardFee.chargeAmount)}
+                </span>
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-4 shrink-0 border-t border-[#e5e5e5] pt-3 text-[9px] leading-4 text-[#666]">
             <p className="mb-0.5 font-medium text-[#444]">Terms</p>
             <p>{terms}</p>
-            {showFee && cardFee ? (
-              <p className="mt-1.5">
-                Card processing fee of {formatCurrency(cardFee.feeAmount)} was
-                charged so the invoice principal of{" "}
-                {formatCurrency(cardFee.invoiceAmount)} is received in full.
-                Total charged: {formatCurrency(cardFee.chargeAmount)}.
-              </p>
-            ) : null}
           </div>
         </div>
       </div>

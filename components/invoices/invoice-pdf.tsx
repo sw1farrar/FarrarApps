@@ -17,6 +17,7 @@ export function InvoicePdfViewer(props: {
   company: CompanySettings | null;
   logoSrc: string;
   cardFee?: InvoiceCardFeeDisplay | null;
+  includeCardRemittance?: boolean;
 }) {
   return (
     <PDFViewer width="100%" height="100%" showToolbar>

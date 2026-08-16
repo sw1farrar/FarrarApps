@@ -60,6 +60,7 @@ export async function GET(
       company,
       logoSrc,
       cardFee,
+      includeCardRemittance: true,
     });
 
     const body = new Uint8Array(buffer);

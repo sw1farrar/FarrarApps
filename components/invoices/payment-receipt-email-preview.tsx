@@ -95,9 +95,12 @@ export function PaymentReceiptEmailPreview({
             <br />
             <br />
             Thank you for your payment. Here is a summary of charges for invoice{" "}
-            {invoice.invoice_number}. A PDF of the paid invoice
-            {feeAmount > 0 ? " (including the card processing fee)" : ""} is
-            attached.
+            {invoice.invoice_number}. The attached invoice shows the amount paid
+            to {companyName}
+            {feeAmount > 0
+              ? `. The card processing fee is listed separately because it is paid to the processor, not to ${companyName}`
+              : ""}
+            .
           </p>
 
           <div className="rounded-xl border border-[#ecece8] bg-[#fafaf8] px-4 py-3 text-sm text-[#1a1a1a]">
@@ -133,7 +136,7 @@ export function PaymentReceiptEmailPreview({
               </p>
               <p className="text-xs text-[#777]">
                 Paid invoice PDF
-                {feeAmount > 0 ? " · includes processing fee" : ""}
+                {feeAmount > 0 ? " · fee listed separately" : ""}
               </p>
             </div>
           </div>
@@ -157,6 +160,7 @@ export function PaymentReceiptEmailPreview({
             company={company}
             logoUrl={logoUrl}
             cardFee={resolvedFee}
+            includeCardRemittance
           />
         </div>
       </div>

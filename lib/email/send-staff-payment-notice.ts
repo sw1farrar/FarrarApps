@@ -70,7 +70,7 @@ export async function sendStaffPaymentNotice(input: {
 
     const feeLine =
       input.feeAmount > 0
-        ? `Card fee: ${formatCurrency(input.feeAmount)}\n`
+        ? `Card fee (paid to Stripe, not received): ${formatCurrency(input.feeAmount)}\n`
         : "";
 
     const textBody = [
@@ -81,9 +81,11 @@ export async function sendStaffPaymentNotice(input: {
       customer?.email ? `Customer email: ${customer.email}` : null,
       `Paid: ${paidLabel}`,
       "",
-      `Invoice amount: ${formatCurrency(input.invoiceAmount)}`,
+      `Amount received: ${formatCurrency(input.invoiceAmount)}`,
       feeLine.trimEnd() || null,
-      `Total charged: ${formatCurrency(input.chargeAmount)}`,
+      input.feeAmount > 0
+        ? `Customer card charged: ${formatCurrency(input.chargeAmount)} (pass-through; not company income)`
+        : null,
       "",
       `Open invoice: ${href}`,
     ]
@@ -93,8 +95,12 @@ export async function sendStaffPaymentNotice(input: {
     const feeRowHtml =
       input.feeAmount > 0
         ? `<tr>
-            <td style="padding:6px 0;color:#555;font-size:14px;">Card processing fee</td>
+            <td style="padding:6px 0;color:#555;font-size:14px;">Card fee (paid to Stripe, not received)</td>
             <td style="padding:6px 0;text-align:right;font-size:14px;font-weight:600;">${formatCurrency(input.feeAmount)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#555;font-size:14px;">Customer card charged</td>
+            <td style="padding:6px 0;text-align:right;font-size:14px;font-weight:600;">${formatCurrency(input.chargeAmount)}</td>
           </tr>`
         : "";
 
@@ -113,13 +119,13 @@ export async function sendStaffPaymentNotice(input: {
       </p>
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 20px;">
         <tr>
-          <td style="padding:6px 0;color:#555;font-size:14px;">Invoice amount</td>
+          <td style="padding:6px 0;color:#555;font-size:14px;">Amount received</td>
           <td style="padding:6px 0;text-align:right;font-size:14px;font-weight:600;">${formatCurrency(input.invoiceAmount)}</td>
         </tr>
         ${feeRowHtml}
         <tr>
-          <td style="padding:10px 0 0;border-top:1px solid #ecece8;font-size:15px;font-weight:700;">Total charged</td>
-          <td style="padding:10px 0 0;border-top:1px solid #ecece8;text-align:right;font-size:16px;font-weight:700;">${formatCurrency(input.chargeAmount)}</td>
+          <td style="padding:10px 0 0;border-top:1px solid #ecece8;font-size:15px;font-weight:700;">Posted to books</td>
+          <td style="padding:10px 0 0;border-top:1px solid #ecece8;text-align:right;font-size:16px;font-weight:700;">${formatCurrency(input.invoiceAmount)}</td>
         </tr>
       </table>
       <p style="margin:0;">
@@ -137,7 +143,7 @@ export async function sendStaffPaymentNotice(input: {
       const result = await sendBrevoEmail({
         toEmail: r.email!,
         toName: r.full_name || r.email,
-        subject: `Payment received · ${invoiceNumber} · ${formatCurrency(input.chargeAmount)}`,
+        subject: `Payment received · ${invoiceNumber} · ${formatCurrency(input.invoiceAmount)}`,
         htmlContent: htmlBody,
         textContent: textBody,
       });

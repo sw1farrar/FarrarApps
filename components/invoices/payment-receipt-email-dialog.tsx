@@ -4,7 +4,10 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { resendPaymentReceipt } from "@/lib/data/invoices";
+import {
+  downloadPaymentReceiptPdf,
+  resendPaymentReceipt,
+} from "@/lib/data/invoices";
 import { formatCurrency } from "@/lib/format";
 import type { InvoiceCardFeeDisplay } from "@/lib/invoices/card-fee-display";
 import type {
@@ -58,6 +61,7 @@ export function PaymentReceiptEmailDialog({
   const router = useRouter();
   const [recipient, setRecipient] = React.useState(customer?.email || "");
   const [sending, setSending] = React.useState(false);
+  const [downloading, setDownloading] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
@@ -85,6 +89,31 @@ export function PaymentReceiptEmailDialog({
     router.refresh();
   }
 
+  async function onDownload() {
+    setDownloading(true);
+    const result = await downloadPaymentReceiptPdf(invoice.id);
+    setDownloading(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    try {
+      const bytes = Uint8Array.from(atob(result.contentBase64), (c) =>
+        c.charCodeAt(0)
+      );
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Receipt PDF downloaded");
+    } catch {
+      toast.error("Could not save the receipt PDF");
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(92dvh,90vh)] w-[calc(100vw-2rem)] max-w-5xl gap-0 overflow-hidden p-0">
@@ -106,15 +135,18 @@ export function PaymentReceiptEmailDialog({
               />
             </div>
             <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-              Sends a paid receipt with the final invoice PDF attached.
+              Customer receipt: invoice amount plus any Stripe fee, so the
+              total matches the card charge. You can send this to the customer
+              or to yourself. Download PDF on the company invoice stays at the
+              booked amount without the fee.
               {feeAmount > 0 ? (
                 <>
                   {" "}
-                  Includes the{" "}
+                  Stripe fee{" "}
                   <span className="font-medium text-foreground">
                     {formatCurrency(feeAmount)}
                   </span>{" "}
-                  card processing fee so the PDF total matches the card charge.
+                  is listed separately (paid to the processor, not received).
                 </>
               ) : fromStripe ? (
                 <> Online payment with no pass-through fee.</>
@@ -168,11 +200,24 @@ export function PaymentReceiptEmailDialog({
             type="button"
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            disabled={sending}
+            disabled={sending || downloading}
           >
             Cancel
           </Button>
-          <Button type="button" onClick={() => void onSend()} disabled={sending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void onDownload()}
+            disabled={sending || downloading}
+          >
+            {downloading ? <Loader2 className="size-4 animate-spin" /> : null}
+            Download receipt PDF
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void onSend()}
+            disabled={sending || downloading}
+          >
             {sending ? <Loader2 className="size-4 animate-spin" /> : null}
             Send receipt with PDF
           </Button>

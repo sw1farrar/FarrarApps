@@ -84,6 +84,7 @@ export default async function SharedInvoicePdfPage({
       company={typedCompany}
       initialLogoSrc={logo?.signedUrl ?? undefined}
       cardFee={cardFee}
+      includeCardRemittance={profile.role === "client"}
     />
   );
 }

@@ -8,6 +8,11 @@ import {
   Image,
 } from "@react-pdf/renderer";
 import type { InvoiceCardFeeDisplay } from "@/lib/invoices/card-fee-display";
+import {
+  remittanceCompanyName,
+  remittanceCopy,
+  shouldShowCardRemittance,
+} from "@/lib/invoices/card-fee-remittance";
 import { formatDate } from "@/lib/format";
 import type {
   CompanySettings,
@@ -73,6 +78,42 @@ const styles = StyleSheet.create({
   totalLabelStrong: { fontSize: 11, fontWeight: 700 },
   totalValueStrong: { fontSize: 11, fontWeight: 700 },
   terms: { marginTop: 36, color: "#555", lineHeight: 1.4 },
+  remittance: {
+    marginTop: 20,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+    backgroundColor: "#fafaf8",
+  },
+  remittanceHeading: {
+    fontSize: 8,
+    fontWeight: 700,
+    letterSpacing: 0.6,
+    color: "#666",
+    marginBottom: 6,
+  },
+  remittanceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 3,
+  },
+  remittanceLabel: { fontSize: 9, color: "#555", width: "78%" },
+  remittanceValue: { fontSize: 9, textAlign: "right", width: "22%" },
+  remittanceTotal: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+    paddingTop: 5,
+    borderTopWidth: 1,
+    borderTopColor: "#ddd",
+  },
+  remittanceTotalLabel: { fontSize: 9, fontWeight: 700, width: "78%" },
+  remittanceTotalValue: {
+    fontSize: 9,
+    fontWeight: 700,
+    textAlign: "right",
+    width: "22%",
+  },
 });
 
 function money(n: number) {
@@ -86,17 +127,24 @@ export function InvoicePdfDocument({
   company,
   logoSrc,
   cardFee,
+  includeCardRemittance = false,
 }: {
   invoice: Invoice;
   lines: InvoiceLineItem[];
   customer: Customer | null;
   company: CompanySettings | null;
   logoSrc: string;
-  /** When paid online with pass-through fee — final total must match charge. */
   cardFee?: InvoiceCardFeeDisplay | null;
+  /** Customer receipt only — remittance sits below booked invoice totals. */
+  includeCardRemittance?: boolean;
 }) {
-  const showFee = Boolean(cardFee && cardFee.feeAmount > 0);
-  const isPaid = invoice.status === "paid" || Boolean(cardFee);
+  const showRemittance = shouldShowCardRemittance(
+    includeCardRemittance,
+    cardFee
+  );
+  const isPaid = invoice.status === "paid";
+  const companyName = remittanceCompanyName(company?.name);
+  const copy = remittanceCopy(companyName);
 
   return (
     <Document>
@@ -138,10 +186,7 @@ export function InvoicePdfDocument({
           {isPaid ? (
             <Text style={styles.paidBadge}>
               PAID
-              {cardFee?.paidAt || invoice.paid_at
-                ? ` · ${paidOnLabel(cardFee?.paidAt || invoice.paid_at)}`
-                : ""}
-              {showFee ? " · includes card processing fee" : ""}
+              {invoice.paid_at ? ` · ${paidOnLabel(invoice.paid_at)}` : ""}
             </Text>
           ) : null}
         </View>
@@ -179,36 +224,39 @@ export function InvoicePdfDocument({
               <Text>{money(invoice.tax)}</Text>
             </View>
           ) : null}
-          {showFee && cardFee ? (
-            <>
-              <View style={styles.totalRow}>
-                <Text>Invoice total</Text>
-                <Text>{money(cardFee.invoiceAmount)}</Text>
-              </View>
-              <View style={styles.totalRow}>
-                <Text>Card processing fee</Text>
-                <Text>{money(cardFee.feeAmount)}</Text>
-              </View>
-              <View style={styles.totalRowStrong}>
-                <Text style={styles.totalLabelStrong}>
-                  {isPaid ? "Amount paid" : "Total due"}
-                </Text>
-                <Text style={styles.totalValueStrong}>
-                  {money(cardFee.chargeAmount)}
-                </Text>
-              </View>
-            </>
-          ) : (
-            <View style={styles.totalRowStrong}>
-              <Text style={styles.totalLabelStrong}>
-                {isPaid ? "Amount paid" : "Total"}
-              </Text>
-              <Text style={styles.totalValueStrong}>
-                {money(invoice.total)}
+          <View style={styles.totalRowStrong}>
+            <Text style={styles.totalLabelStrong}>
+              {isPaid ? "Amount paid" : "Total"}
+            </Text>
+            <Text style={styles.totalValueStrong}>{money(invoice.total)}</Text>
+          </View>
+        </View>
+
+        {showRemittance && cardFee ? (
+          <View style={styles.remittance}>
+            <Text style={styles.remittanceHeading}>{copy.heading}</Text>
+            <View style={styles.remittanceRow}>
+              <Text style={styles.remittanceLabel}>{copy.paidToLabel}</Text>
+              <Text style={styles.remittanceValue}>
+                {money(cardFee.invoiceAmount)}
               </Text>
             </View>
-          )}
-        </View>
+            <View style={styles.remittanceRow}>
+              <Text style={styles.remittanceLabel}>{copy.feeLabel}</Text>
+              <Text style={styles.remittanceValue}>
+                {money(cardFee.feeAmount)}
+              </Text>
+            </View>
+            <View style={styles.remittanceTotal}>
+              <Text style={styles.remittanceTotalLabel}>
+                {copy.cardTotalLabel}
+              </Text>
+              <Text style={styles.remittanceTotalValue}>
+                {money(cardFee.chargeAmount)}
+              </Text>
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.terms}>
           <Text>Terms</Text>
@@ -217,11 +265,6 @@ export function InvoicePdfDocument({
               company?.invoice_terms ||
               "Payment is due within 30 days of invoice date."}
           </Text>
-          {showFee && cardFee ? (
-            <Text>
-              {`Card processing fee of ${money(cardFee.feeAmount)} was charged so the invoice principal of ${money(cardFee.invoiceAmount)} is received in full. Total charged: ${money(cardFee.chargeAmount)}.`}
-            </Text>
-          ) : null}
         </View>
       </Page>
     </Document>

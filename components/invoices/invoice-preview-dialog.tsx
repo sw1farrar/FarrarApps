@@ -24,6 +24,7 @@ export function InvoicePreviewDialog({
   company,
   logoUrl,
   cardFee,
+  includeCardRemittance = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,6 +34,7 @@ export function InvoicePreviewDialog({
   company: CompanySettings | null;
   logoUrl?: string | null;
   cardFee?: InvoiceCardFeeDisplay | null;
+  includeCardRemittance?: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -50,6 +52,7 @@ export function InvoicePreviewDialog({
             company={company}
             logoUrl={logoUrl}
             cardFee={cardFee}
+            includeCardRemittance={includeCardRemittance}
           />
         </div>
       </DialogContent>

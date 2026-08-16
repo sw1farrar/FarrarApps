@@ -1,7 +1,7 @@
 /**
- * Card processing fee lines for paid invoices (pass-through fee on Stripe).
- * When present, invoice PDF / paper preview must show fee + amount charged
- * so the document matches the customer's card charge to the penny.
+ * Card processing fee amounts for paid invoices (pass-through fee on Stripe).
+ * Invoice totals stay at the booked principal. Customer receipts may add a
+ * remittance box so the card charge matches to the penny.
  */
 
 export type InvoiceCardFeeDisplay = {

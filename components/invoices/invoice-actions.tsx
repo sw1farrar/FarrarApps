@@ -14,7 +14,6 @@ import {
 } from "@/lib/data/invoices";
 import { canDeleteInvoice } from "@/lib/invoices/status";
 import { formatCurrency } from "@/lib/format";
-import type { InvoiceCardFeeDisplay } from "@/lib/invoices/card-fee-display";
 import type {
   Account,
   CompanySettings,
@@ -47,7 +46,6 @@ export function InvoiceActions({
   lines,
   company,
   logoUrl,
-  cardFee = null,
   showPreviewButton = true,
   /** Open the send-email dialog on mount (e.g. after creating an invoice). */
   initialEmailOpen = false,
@@ -59,7 +57,6 @@ export function InvoiceActions({
   lines: InvoiceLineItem[];
   company: CompanySettings | null;
   logoUrl?: string | null;
-  cardFee?: InvoiceCardFeeDisplay | null;
   showPreviewButton?: boolean;
   initialEmailOpen?: boolean;
   onChanged?: () => void;
@@ -384,7 +381,6 @@ export function InvoiceActions({
         customer={customer}
         company={company}
         logoUrl={logoUrl}
-        cardFee={cardFee ?? receiptCtx?.cardFee}
       />
 
       <InvoiceEmailDialog

@@ -47,13 +47,6 @@ export default async function FinanceInvoicePdfPage({
 
   const typedCompany = (company as CompanySettings | null) ?? null;
   const typedInvoice = invoice as Invoice;
-  const { loadInvoiceCardFee } = await import("@/lib/invoices/load-card-fee");
-  const cardFee = await loadInvoiceCardFee(
-    supabase,
-    id,
-    Number(typedInvoice.total),
-    typedInvoice.paid_at
-  );
   const { data: logo } = typedCompany?.logo_path
     ? await supabase.storage
         .from("logos")
@@ -67,7 +60,6 @@ export default async function FinanceInvoicePdfPage({
       customer={(customer as Customer) ?? null}
       company={typedCompany}
       initialLogoSrc={logo?.signedUrl ?? undefined}
-      cardFee={cardFee}
     />
   );
 }

@@ -94,32 +94,27 @@ export function PaymentReceiptEmailPreview({
             Hi {customerName},
             <br />
             <br />
-            Thank you for your payment. Here is a summary of charges for invoice{" "}
-            {invoice.invoice_number}. The attached invoice shows the amount paid
-            to {companyName}
-            {feeAmount > 0
-              ? `. The card processing fee is listed separately because it is paid to the processor, not to ${companyName}`
-              : ""}
-            .
+            Thank you for your payment. Summary for invoice{" "}
+            {invoice.invoice_number}. PDF attached.
           </p>
 
           <div className="rounded-xl border border-[#ecece8] bg-[#fafaf8] px-4 py-3 text-sm text-[#1a1a1a]">
             <div className="flex justify-between py-1">
-              <span className="text-[#555]">Invoice amount</span>
+              <span className="text-[#555]">Invoice</span>
               <span className="font-semibold tabular-nums">
                 {formatCurrency(invoiceAmount)}
               </span>
             </div>
             {feeAmount > 0 ? (
               <div className="flex justify-between py-1">
-                <span className="text-[#555]">Card processing fee</span>
+                <span className="text-[#555]">Card fee</span>
                 <span className="font-semibold tabular-nums">
                   {formatCurrency(feeAmount)}
                 </span>
               </div>
             ) : null}
             <div className="mt-1 flex justify-between border-t border-[#ecece8] pt-2">
-              <span className="font-bold text-[#1a1a1a]">Total paid</span>
+              <span className="font-bold text-[#1a1a1a]">Charged</span>
               <span className="text-lg font-bold tabular-nums text-[#1a1a1a]">
                 {formatCurrency(chargeAmount)}
               </span>
@@ -136,7 +131,6 @@ export function PaymentReceiptEmailPreview({
               </p>
               <p className="text-xs text-[#777]">
                 Paid invoice PDF
-                {feeAmount > 0 ? " · fee listed separately" : ""}
               </p>
             </div>
           </div>

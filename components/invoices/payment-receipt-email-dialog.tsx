@@ -135,24 +135,11 @@ export function PaymentReceiptEmailDialog({
               />
             </div>
             <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-              Customer receipt: invoice amount plus any Stripe fee, so the
-              total matches the card charge. You can send this to the customer
-              or to yourself. Download PDF on the company invoice stays at the
-              booked amount without the fee.
-              {feeAmount > 0 ? (
-                <>
-                  {" "}
-                  Stripe fee{" "}
-                  <span className="font-medium text-foreground">
-                    {formatCurrency(feeAmount)}
-                  </span>{" "}
-                  is listed separately (paid to the processor, not received).
-                </>
-              ) : fromStripe ? (
-                <> Online payment with no pass-through fee.</>
-              ) : (
-                <> Offline / manual payment — no card fee line.</>
-              )}
+              {feeAmount > 0
+                ? "Receipt includes the card fee. Invoice PDF does not."
+                : fromStripe
+                  ? "Online payment. No card fee."
+                  : "Offline payment. No card fee."}
             </div>
             <dl className="space-y-1.5 text-sm">
               <div className="flex justify-between gap-2">

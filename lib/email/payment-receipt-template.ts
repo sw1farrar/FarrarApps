@@ -62,7 +62,7 @@ export function buildPaymentReceiptEmailHtml(input: {
     feeAmount > 0
       ? `
       <tr>
-        <td style="padding:8px 0;font-size:14px;color:#555;">Card processing fee</td>
+        <td style="padding:8px 0;font-size:14px;color:#555;">Card fee</td>
         <td style="padding:8px 0;font-size:14px;color:#1a1a1a;text-align:right;font-weight:600;">${formatCurrency(feeAmount)}</td>
       </tr>`
       : "";
@@ -94,8 +94,7 @@ export function buildPaymentReceiptEmailHtml(input: {
               </p>
               <p style="margin:0 0 20px;font-size:14px;color:#333;line-height:1.6;">
                 Hi ${escapeHtml(customer.name)},<br /><br />
-                Thank you for your payment. Here is a summary of charges for invoice ${escapeHtml(invoice.invoice_number)}.
-                The attached invoice shows the amount paid to ${escapeHtml(companyName)}.${feeAmount > 0 ? " The card processing fee is listed separately because it is paid to the processor, not to " + escapeHtml(companyName) + "." : ""}
+                Thank you for your payment. Summary for invoice ${escapeHtml(invoice.invoice_number)}. PDF attached.
               </p>
 
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;background:#fafaf8;border:1px solid #ecece8;border-radius:12px;">
@@ -103,12 +102,12 @@ export function buildPaymentReceiptEmailHtml(input: {
                   <td style="padding:16px 18px;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                       <tr>
-                        <td style="padding:6px 0;font-size:14px;color:#555;">Invoice amount</td>
+                        <td style="padding:6px 0;font-size:14px;color:#555;">Invoice</td>
                         <td style="padding:6px 0;font-size:14px;color:#1a1a1a;text-align:right;font-weight:600;">${formatCurrency(invoiceAmount)}</td>
                       </tr>
                       ${feeRow}
                       <tr>
-                        <td style="padding:10px 0 0;font-size:15px;color:#1a1a1a;font-weight:700;border-top:1px solid #ecece8;">Total paid</td>
+                        <td style="padding:10px 0 0;font-size:15px;color:#1a1a1a;font-weight:700;border-top:1px solid #ecece8;">Charged</td>
                         <td style="padding:10px 0 0;font-size:18px;color:#1a1a1a;text-align:right;font-weight:700;border-top:1px solid #ecece8;">${formatCurrency(chargeAmount)}</td>
                       </tr>
                     </table>
@@ -166,19 +165,15 @@ export function buildPaymentReceiptEmailText(input: {
     "",
     `Payment received for invoice ${input.invoice.invoice_number}.`,
     "",
-    `Invoice amount: ${formatCurrency(input.invoiceAmount)}`,
+    `Invoice: ${formatCurrency(input.invoiceAmount)}`,
   ];
   if (input.feeAmount > 0) {
-    lines.push(
-      `Card processing fee: ${formatCurrency(input.feeAmount)}`
-    );
+    lines.push(`Card fee: ${formatCurrency(input.feeAmount)}`);
   }
   lines.push(
-    `Total paid: ${formatCurrency(input.chargeAmount)}`,
+    `Charged: ${formatCurrency(input.chargeAmount)}`,
     "",
-    input.feeAmount > 0
-      ? `The attached invoice shows the amount paid to ${companyName}. The card processing fee is listed separately because it is paid to the processor, not to ${companyName}.`
-      : `A PDF of the paid invoice is attached.`,
+    `PDF attached.`,
     "",
     companyName
   );

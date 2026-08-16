@@ -3,10 +3,7 @@
 import * as React from "react";
 import { formatCurrency } from "@/lib/format";
 import type { InvoiceCardFeeDisplay } from "@/lib/invoices/card-fee-display";
-import {
-  remittanceCompanyName,
-  remittanceCopy,
-} from "@/lib/invoices/card-fee-remittance";
+import { remittanceCopy } from "@/lib/invoices/card-fee-remittance";
 import type {
   CompanySettings,
   Customer,
@@ -38,8 +35,7 @@ export function InvoiceHowPaidCard({
   cardFee: InvoiceCardFeeDisplay;
 }) {
   const [open, setOpen] = React.useState(false);
-  const companyName = remittanceCompanyName(company?.name);
-  const copy = remittanceCopy(companyName);
+  const copy = remittanceCopy();
 
   return (
     <>
@@ -48,10 +44,6 @@ export function InvoiceHowPaidCard({
           <CardTitle className="text-sm">{copy.heading}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 p-3 pt-0">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            The invoice total is the amount {companyName} received. The card
-            fee was paid to Stripe and is not company income.
-          </p>
           <dl className="space-y-1.5 text-sm">
             <div className="flex justify-between gap-3">
               <dt className="text-muted-foreground">{copy.paidToLabel}</dt>

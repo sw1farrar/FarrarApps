@@ -19,12 +19,11 @@ export function shouldShowCardRemittance(
   return Boolean(includeCardRemittance && cardFee && cardFee.feeAmount > 0);
 }
 
-export function remittanceCopy(companyName?: string | null) {
-  const name = remittanceCompanyName(companyName);
+export function remittanceCopy(_companyName?: string | null) {
   return {
     heading: "How this was paid",
-    paidToLabel: `Paid to ${name}`,
-    feeLabel: `Card processing fee (paid to the card processor, not ${name})`,
-    cardTotalLabel: "Total charged to card",
+    paidToLabel: "Invoice",
+    feeLabel: "Card fee",
+    cardTotalLabel: "Charged",
   };
 }

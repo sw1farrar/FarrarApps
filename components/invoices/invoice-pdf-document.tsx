@@ -13,6 +13,11 @@ import {
   remittanceCopy,
   shouldShowCardRemittance,
 } from "@/lib/invoices/card-fee-remittance";
+import {
+  invoiceBillToName,
+  invoiceCustomerAddress,
+  invoiceLinesHaveDates,
+} from "@/lib/invoices/invoice-document";
 import { formatDate } from "@/lib/format";
 import type {
   CompanySettings,
@@ -23,96 +28,157 @@ import type {
 
 function paidOnLabel(value: string | null | undefined) {
   if (!value) return "";
-  // Timestamps: show local calendar day of the instant; pure YMD via formatDate
   return formatDate(value);
 }
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
-    fontSize: 10,
+    paddingTop: 22,
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+    fontSize: 9,
     fontFamily: "Helvetica",
     color: "#111",
     backgroundColor: "#ffffff",
   },
-  logoWrap: {
-    alignItems: "center",
-    marginBottom: 24,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
-  logo: { width: 160, height: 48, objectFit: "contain" },
-  meta: { marginBottom: 20 },
-  title: { fontSize: 16, marginBottom: 8, fontWeight: 700 },
+  brand: {
+    width: "58%",
+    paddingRight: 10,
+  },
+  logo: { width: 108, height: 28, objectFit: "contain", marginBottom: 3 },
+  companyName: { fontSize: 9, fontWeight: 700 },
+  companyAddress: { fontSize: 8, color: "#555", marginTop: 1 },
+  meta: {
+    width: "42%",
+    alignItems: "flex-end",
+  },
+  metaKicker: {
+    fontSize: 8,
+    letterSpacing: 1.2,
+    color: "#666",
+    marginBottom: 1,
+    fontWeight: 700,
+  },
+  title: { fontSize: 13, fontWeight: 700, marginBottom: 3 },
+  metaLine: { fontSize: 8, marginBottom: 1, textAlign: "right" },
+  metaMuted: { color: "#666" },
   paidBadge: {
-    marginTop: 6,
-    fontSize: 10,
+    marginTop: 2,
+    fontSize: 8,
     fontWeight: 700,
     color: "#166534",
   },
+  billTo: {
+    marginBottom: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: "#ddd",
+  },
+  billToLabel: {
+    fontSize: 7,
+    fontWeight: 700,
+    letterSpacing: 0.6,
+    color: "#666",
+    marginBottom: 2,
+  },
+  billToName: { fontSize: 9 },
+  billToDetail: { fontSize: 8, color: "#555", marginTop: 1 },
   row: {
     flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
-    paddingVertical: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#e5e5e5",
+    paddingVertical: 3,
+    alignItems: "flex-start",
   },
-  th: { fontWeight: 700, borderBottomWidth: 1, borderBottomColor: "#111" },
-  colDesc: { width: "46%" },
-  colQty: { width: "18%", textAlign: "right" },
-  colRate: { width: "18%", textAlign: "right" },
-  colAmt: { width: "18%", textAlign: "right" },
-  totals: { marginTop: 16, alignItems: "flex-end" },
+  th: {
+    fontWeight: 700,
+    fontSize: 7,
+    letterSpacing: 0.4,
+    color: "#444",
+    borderBottomWidth: 1,
+    borderBottomColor: "#111",
+    paddingTop: 2,
+    paddingBottom: 4,
+    textTransform: "uppercase",
+  },
+  colDate: { width: "18%" },
+  colDesc: { width: "42%" },
+  colDescWide: { width: "60%" },
+  colQty: { width: "12%", textAlign: "right" },
+  colRate: { width: "14%", textAlign: "right" },
+  colAmt: { width: "14%", textAlign: "right" },
+  dateText: { fontSize: 8, color: "#555" },
+  totals: { marginTop: 8, alignItems: "flex-end" },
   totalRow: {
     flexDirection: "row",
-    width: 220,
+    width: 180,
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   totalRowStrong: {
     flexDirection: "row",
-    width: 220,
+    width: 180,
     justifyContent: "space-between",
-    marginTop: 4,
-    paddingTop: 6,
+    marginTop: 2,
+    paddingTop: 3,
     borderTopWidth: 1,
     borderTopColor: "#111",
   },
-  totalLabelStrong: { fontSize: 11, fontWeight: 700 },
-  totalValueStrong: { fontSize: 11, fontWeight: 700 },
-  terms: { marginTop: 36, color: "#555", lineHeight: 1.4 },
+  totalLabelStrong: { fontSize: 10, fontWeight: 700 },
+  totalValueStrong: { fontSize: 10, fontWeight: 700 },
+  terms: { marginTop: 10, paddingTop: 6, borderTopWidth: 1, borderTopColor: "#e5e5e5" },
+  termsHeading: { fontSize: 8, fontWeight: 700, color: "#444", marginBottom: 2 },
+  termsBody: { fontSize: 8, color: "#555", lineHeight: 1.3 },
   remittance: {
-    marginTop: 20,
-    padding: 10,
+    marginTop: 8,
+    padding: 6,
     borderWidth: 1,
     borderColor: "#e5e5e5",
     backgroundColor: "#fafaf8",
   },
   remittanceHeading: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: 700,
     letterSpacing: 0.6,
     color: "#666",
-    marginBottom: 6,
+    marginBottom: 4,
+    textTransform: "uppercase",
   },
   remittanceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 3,
+    marginBottom: 2,
   },
-  remittanceLabel: { fontSize: 9, color: "#555", width: "78%" },
-  remittanceValue: { fontSize: 9, textAlign: "right", width: "22%" },
+  remittanceLabel: { fontSize: 8, color: "#555", width: "78%" },
+  remittanceValue: { fontSize: 8, textAlign: "right", width: "22%" },
   remittanceTotal: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 4,
-    paddingTop: 5,
+    marginTop: 3,
+    paddingTop: 3,
     borderTopWidth: 1,
     borderTopColor: "#ddd",
   },
-  remittanceTotalLabel: { fontSize: 9, fontWeight: 700, width: "78%" },
+  remittanceTotalLabel: { fontSize: 8, fontWeight: 700, width: "78%" },
   remittanceTotalValue: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 700,
     textAlign: "right",
     width: "22%",
+  },
+  pageNumber: {
+    position: "absolute",
+    bottom: 12,
+    left: 24,
+    right: 24,
+    fontSize: 8,
+    color: "#999",
+    textAlign: "center",
   },
 });
 
@@ -145,127 +211,142 @@ export function InvoicePdfDocument({
   const isPaid = invoice.status === "paid";
   const companyName = remittanceCompanyName(company?.name);
   const copy = remittanceCopy(companyName);
+  const billTo = invoiceBillToName(customer);
+  const customerAddress = invoiceCustomerAddress(customer);
+  const showDate = invoiceLinesHaveDates(lines);
+  const descCol = showDate ? styles.colDesc : styles.colDescWide;
 
   return (
     <Document>
-      <Page size="LETTER" style={styles.page}>
-        <View style={styles.logoWrap}>
-          {/* eslint-disable-next-line jsx-a11y/alt-text */}
-          <Image src={logoSrc} style={styles.logo} />
+      <Page size="LETTER" style={styles.page} wrap>
+        <View wrap={false}>
+          <View style={styles.header}>
+            <View style={styles.brand}>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <Image src={logoSrc} style={styles.logo} />
+              <Text style={styles.companyName}>{companyName}</Text>
+              {company?.address ? (
+                <Text style={styles.companyAddress}>{company.address}</Text>
+              ) : null}
+            </View>
+            <View style={styles.meta}>
+              <Text style={styles.metaKicker}>INVOICE</Text>
+              <Text style={styles.title}>{invoice.invoice_number}</Text>
+              <Text style={styles.metaLine}>
+                <Text style={styles.metaMuted}>Issued </Text>
+                {formatDate(invoice.issue_date)}
+              </Text>
+              <Text style={styles.metaLine}>
+                <Text style={styles.metaMuted}>Due </Text>
+                {formatDate(invoice.due_date)}
+              </Text>
+              {isPaid ? (
+                <Text style={styles.paidBadge}>
+                  PAID
+                  {invoice.paid_at ? ` · ${paidOnLabel(invoice.paid_at)}` : ""}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+
+          <View style={styles.billTo}>
+            <Text style={styles.billToLabel}>BILL TO</Text>
+            <Text style={styles.billToName}>{billTo}</Text>
+            {customerAddress ? (
+              <Text style={styles.billToDetail}>{customerAddress}</Text>
+            ) : null}
+            {customer?.email ? (
+              <Text style={styles.billToDetail}>{customer.email}</Text>
+            ) : null}
+          </View>
         </View>
 
-        <View style={styles.meta}>
-          <Text style={styles.title}>Invoice {invoice.invoice_number}</Text>
-          <Text>
-            {company?.name || "Farrar Apps"}
-            {company?.address ? ` · ${company.address}` : ""}
-          </Text>
-          <Text>
-            Bill to: {customer?.name || "Customer"}
-            {customer?.company ? ` (${customer.company})` : ""}
-          </Text>
-          {customer?.address ||
-          customer?.city ||
-          customer?.state ||
-          customer?.zip ? (
-            <Text>
-              {[
-                customer?.address,
-                [customer?.city, customer?.state].filter(Boolean).join(", "),
-                customer?.zip,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </Text>
-          ) : null}
-          {customer?.email ? <Text>{customer.email}</Text> : null}
-          <Text>
-            Issued {formatDate(invoice.issue_date)} · Due{" "}
-            {formatDate(invoice.due_date)}
-          </Text>
-          {isPaid ? (
-            <Text style={styles.paidBadge}>
-              PAID
-              {invoice.paid_at ? ` · ${paidOnLabel(invoice.paid_at)}` : ""}
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={[styles.row, styles.th]}>
-          <Text style={styles.colDesc}>Description</Text>
+        <View style={[styles.row, styles.th]} wrap={false}>
+          {showDate ? <Text style={styles.colDate}>Date</Text> : null}
+          <Text style={descCol}>Description</Text>
           <Text style={styles.colQty}>Qty</Text>
           <Text style={styles.colRate}>Rate</Text>
           <Text style={styles.colAmt}>Amount</Text>
         </View>
         {lines.map((line) => (
-          <View key={line.id} style={styles.row}>
-            <View style={styles.colDesc}>
-              {line.service_date ? (
-                <Text style={{ fontSize: 8, color: "#666", marginBottom: 2 }}>
-                  {formatDate(line.service_date)}
-                </Text>
-              ) : null}
-              <Text>{line.description}</Text>
-            </View>
+          <View key={line.id} style={styles.row} wrap={false}>
+            {showDate ? (
+              <Text style={[styles.colDate, styles.dateText]}>
+                {line.service_date ? formatDate(line.service_date) : ""}
+              </Text>
+            ) : null}
+            <Text style={descCol}>{line.description}</Text>
             <Text style={styles.colQty}>{Number(line.quantity)}</Text>
             <Text style={styles.colRate}>{money(line.rate)}</Text>
             <Text style={styles.colAmt}>{money(line.amount)}</Text>
           </View>
         ))}
 
-        <View style={styles.totals}>
-          <View style={styles.totalRow}>
-            <Text>Subtotal</Text>
-            <Text>{money(invoice.subtotal)}</Text>
-          </View>
-          {Number(invoice.tax) !== 0 ? (
+        <View wrap={false}>
+          <View style={styles.totals}>
             <View style={styles.totalRow}>
-              <Text>Tax</Text>
-              <Text>{money(invoice.tax)}</Text>
+              <Text>Subtotal</Text>
+              <Text>{money(invoice.subtotal)}</Text>
+            </View>
+            {Number(invoice.tax) !== 0 ? (
+              <View style={styles.totalRow}>
+                <Text>Tax</Text>
+                <Text>{money(invoice.tax)}</Text>
+              </View>
+            ) : null}
+            <View style={styles.totalRowStrong}>
+              <Text style={styles.totalLabelStrong}>
+                {isPaid ? "Amount paid" : "Total"}
+              </Text>
+              <Text style={styles.totalValueStrong}>{money(invoice.total)}</Text>
+            </View>
+          </View>
+
+          {showRemittance && cardFee ? (
+            <View style={styles.remittance}>
+              <Text style={styles.remittanceHeading}>{copy.heading}</Text>
+              <View style={styles.remittanceRow}>
+                <Text style={styles.remittanceLabel}>{copy.paidToLabel}</Text>
+                <Text style={styles.remittanceValue}>
+                  {money(cardFee.invoiceAmount)}
+                </Text>
+              </View>
+              <View style={styles.remittanceRow}>
+                <Text style={styles.remittanceLabel}>{copy.feeLabel}</Text>
+                <Text style={styles.remittanceValue}>
+                  {money(cardFee.feeAmount)}
+                </Text>
+              </View>
+              <View style={styles.remittanceTotal}>
+                <Text style={styles.remittanceTotalLabel}>
+                  {copy.cardTotalLabel}
+                </Text>
+                <Text style={styles.remittanceTotalValue}>
+                  {money(cardFee.chargeAmount)}
+                </Text>
+              </View>
             </View>
           ) : null}
-          <View style={styles.totalRowStrong}>
-            <Text style={styles.totalLabelStrong}>
-              {isPaid ? "Amount paid" : "Total"}
+
+          <View style={styles.terms}>
+            <Text style={styles.termsHeading}>Terms</Text>
+            <Text style={styles.termsBody}>
+              {invoice.notes ||
+                company?.invoice_terms ||
+                "Payment is due within 30 days of invoice date."}
             </Text>
-            <Text style={styles.totalValueStrong}>{money(invoice.total)}</Text>
           </View>
         </View>
 
-        {showRemittance && cardFee ? (
-          <View style={styles.remittance}>
-            <Text style={styles.remittanceHeading}>{copy.heading}</Text>
-            <View style={styles.remittanceRow}>
-              <Text style={styles.remittanceLabel}>{copy.paidToLabel}</Text>
-              <Text style={styles.remittanceValue}>
-                {money(cardFee.invoiceAmount)}
-              </Text>
-            </View>
-            <View style={styles.remittanceRow}>
-              <Text style={styles.remittanceLabel}>{copy.feeLabel}</Text>
-              <Text style={styles.remittanceValue}>
-                {money(cardFee.feeAmount)}
-              </Text>
-            </View>
-            <View style={styles.remittanceTotal}>
-              <Text style={styles.remittanceTotalLabel}>
-                {copy.cardTotalLabel}
-              </Text>
-              <Text style={styles.remittanceTotalValue}>
-                {money(cardFee.chargeAmount)}
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
-        <View style={styles.terms}>
-          <Text>Terms</Text>
-          <Text>
-            {invoice.notes ||
-              company?.invoice_terms ||
-              "Payment is due within 30 days of invoice date."}
-          </Text>
-        </View>
+        <Text
+          style={styles.pageNumber}
+          render={({ pageNumber, totalPages }) =>
+            totalPages > 1
+              ? `${invoice.invoice_number}  ·  ${pageNumber} / ${totalPages}`
+              : ""
+          }
+          fixed
+        />
       </Page>
     </Document>
   );

@@ -48,12 +48,7 @@ function mcpImpersonationClient() {
   });
 }
 
-export async function createClient() {
-  const mcpClient = mcpImpersonationClient();
-  if (mcpClient) {
-    return mcpClient as unknown as ReturnType<typeof createServerClient>;
-  }
-
+async function createCookieClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -76,4 +71,12 @@ export async function createClient() {
       },
     }
   );
+}
+
+export async function createClient() {
+  const mcpClient = mcpImpersonationClient();
+  if (mcpClient) {
+    return mcpClient as unknown as Awaited<ReturnType<typeof createCookieClient>>;
+  }
+  return createCookieClient();
 }

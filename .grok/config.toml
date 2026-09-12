@@ -1,0 +1,12 @@
+# Farrar Apps MCP — same connection type as Badazz Tasks.
+# grok.com uses /api/mcp (OAuth login card).
+# Grok Bot uses /api/mcp/bot with a bearer token from Settings → Security.
+#
+# Create a token in the app, then either:
+#   grok mcp add --transport http farrarapps https://farrarapps.com/api/mcp/bot --header "Authorization: Bearer fa_mcp_…"
+# or set FARRARAPPS_MCP_KEY and keep this project config.
+
+[mcp_servers.farrarapps]
+url = "https://farrarapps.com/api/mcp/bot"
+enabled = true
+headers = { Authorization = "Bearer ${FARRARAPPS_MCP_KEY}" }

@@ -1,6 +1,15 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+export function isSupabaseAdminConfigured() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return false;
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return true;
+  return (
+    process.env.NODE_ENV !== "production" &&
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  );
+}
+
 /**
  * Service-role client (bypasses RLS).
  * Does NOT fall back to anon in production — that silently breaks payment apply.

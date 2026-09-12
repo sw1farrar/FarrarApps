@@ -28,6 +28,7 @@ const PROTECTED_PATH_PREFIXES = [
   "/activity",
   "/settings",
   "/invoice-pdf",
+  "/oauth/authorize",
 ];
 
 const STATIC_ASSET_REGEX =
@@ -264,9 +265,10 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
+    const nextPath = `${pathname}${request.nextUrl.search}`;
     url.search = "";
     url.pathname = "/login";
-    url.searchParams.set("next", pathname);
+    url.searchParams.set("next", nextPath);
     const redirect = NextResponse.redirect(url);
     clearAuthCacheCookies(redirect);
     return redirect;
@@ -324,7 +326,13 @@ export async function updateSession(request: NextRequest) {
       if (role === "client") {
         url.pathname = "/portal";
       } else if (safeNext && !safeNext.startsWith("/portal")) {
-        url.pathname = safeNext;
+        try {
+          const parsed = new URL(safeNext, request.nextUrl.origin);
+          url.pathname = parsed.pathname;
+          url.search = parsed.search;
+        } catch {
+          url.pathname = "/dashboard";
+        }
       } else {
         url.pathname = "/dashboard";
       }

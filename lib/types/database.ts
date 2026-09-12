@@ -262,3 +262,13 @@ export type TrustedDevice = {
   last_used_at: string;
   created_at: string;
 };
+
+export type McpAccessToken = {
+  id: string;
+  user_id: string;
+  name: string;
+  token_prefix: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+};

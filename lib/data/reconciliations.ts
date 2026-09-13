@@ -282,7 +282,8 @@ export async function voidReconciliation(
   if (rec.status === "completed") {
     return {
       ok: false,
-      error: "Completed reconciliations cannot be voided (reopen individual transactions instead)",
+      error:
+        "Completed reconciliations cannot be voided. Reopen individual transactions to change amount, account, or type, or update category, description, date, and reference without reopening.",
     };
   }
 

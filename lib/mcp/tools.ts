@@ -52,6 +52,7 @@ import { inviteStaffMember } from "@/lib/data/staff";
 import {
   createTransaction,
   deleteTransaction,
+  setTransactionReconciled,
   updateTransaction,
 } from "@/lib/data/transactions";
 import {
@@ -957,7 +958,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: "update_transaction",
-    description: "Update an unreconciled transaction.",
+    description:
+      "Update a transaction. Category, description, date, reference, customer, project, and invoice can change even after reconciliation. Amount, account, and type require the transaction to be unreconciled — use set_transaction_reconciled to reopen first.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1001,7 +1003,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: "delete_transaction",
-    description: "Delete an unreconciled transaction.",
+    description: "Delete an unreconciled transaction. Reopen first if it is reconciled.",
     inputSchema: {
       type: "object",
       properties: { transaction_id: { type: "string" } },
@@ -1014,6 +1016,33 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           await deleteTransaction(requireString(args.transaction_id, "transaction_id"))
         )
       ),
+  },
+  {
+    name: "set_transaction_reconciled",
+    description:
+      "Mark a transaction reconciled, or reopen it (reconciled=false) so amount, account, or type can be edited. Category, description, date, and similar fields do not require reopening.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        transaction_id: { type: "string" },
+        reconciled: { type: "boolean" },
+      },
+      required: ["transaction_id", "reconciled"],
+      additionalProperties: false,
+    },
+    handler: (userId, args) =>
+      asUser(userId, async () => {
+        const reconciled = bool(args, "reconciled");
+        if (reconciled === undefined) {
+          throw new McpToolError("reconciled is required.");
+        }
+        return unwrapAction(
+          await setTransactionReconciled(
+            requireString(args.transaction_id, "transaction_id"),
+            reconciled
+          )
+        );
+      }),
   },
   {
     name: "list_accounts",
@@ -1219,7 +1248,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: "void_reconciliation",
-    description: "Void an open or completed reconciliation.",
+    description:
+      "Void an open (in-progress) reconciliation. Completed reconciliations cannot be voided. To recategorize cleared transactions, call update_transaction. To change amount, account, or type, reopen the transaction with set_transaction_reconciled.",
     inputSchema: {
       type: "object",
       properties: { reconciliation_id: { type: "string" } },

@@ -70,7 +70,7 @@ export async function handleMcpMessage(
           capabilities: { tools: { listChanged: true } },
           serverInfo: { name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
           instructions:
-            "You are connected to the signed-in user's Farrar Apps workspace. Use tools to manage customers, projects, invoices, transactions, accounts, categories, reconciliations, company settings, staff, portal invites, and project messages. Amounts are USD dollars (not cents). Prefer list_* or get_* to resolve IDs before mutating. Invoice edits only work on drafts.",
+            "You are connected to the signed-in user's Farrar Apps workspace. Use tools to manage customers, projects, invoices, transactions, accounts, categories, reconciliations, company settings, staff, portal invites, and project messages. Amounts are USD dollars (not cents). Prefer list_* or get_* to resolve IDs before mutating. Invoice edits only work on drafts. Reconciled transactions can still change category, description, date, reference, customer, project, and invoice; reopen with set_transaction_reconciled to change amount, account, or type. Completed reconciliations cannot be voided.",
         },
       };
     }
